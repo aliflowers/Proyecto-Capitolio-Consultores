@@ -1,0 +1,2 @@
+-- Faltaba un archivo de migración en el recuento: 0004 ya creado, 0005 creado, 0006 creado, 0007 creado, 0010 creado.
+-- Si necesitas añadir otros (p. ej., 0001_enable_extensions ya creado), indícalo.

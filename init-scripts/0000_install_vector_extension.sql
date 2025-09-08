@@ -1,0 +1,4 @@
+-- 0000_install_vector_extension.sql
+-- This script is intentionally left empty.
+-- Its purpose is to ensure that Docker's entrypoint executes the scripts in the correct numerical order.
+-- The actual extension creation is handled in the subsequent script.

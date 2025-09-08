@@ -1,0 +1,29 @@
+.excel-viewer-container table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}
+
+.excel-viewer-container th,
+.excel-viewer-container td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.excel-viewer-container th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.excel-viewer-container tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.excel-viewer-container tbody tr:hover {
+  background-color: #f1f1f1;
+}

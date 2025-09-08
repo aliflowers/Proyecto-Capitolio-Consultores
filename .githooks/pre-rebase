@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+repo_root=$(git rev-parse --show-toplevel)
+backup_dir="$repo_root/backups"
+mkdir -p "$backup_dir"
+stamp=$(date +%Y%m%d_%H%M%S)
+archive="$backup_dir/prerebase_$stamp.tar.gz"
+(
+  cd "$repo_root"
+  tar --exclude=".git" --exclude="node_modules" --exclude=".next" --exclude="backups" --exclude="db-backups" -czf "$archive" .
+)
+echo "[pre-rebase] Backup snapshot created: $archive"
+exit 0
+

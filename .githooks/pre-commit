@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+backup_dir="$repo_root/backups"
+mkdir -p "$backup_dir"
+
+# Timestamp
+stamp=$(date +%Y%m%d_%H%M%S)
+archive="$backup_dir/repo_$stamp.tar.gz"
+
+# Create a snapshot excluding heavy/ephemeral dirs
+# bsdtar/tar is available with Git for Windows
+( 
+  cd "$repo_root"
+  tar \
+    --exclude=".git" \
+    --exclude="node_modules" \
+    --exclude=".next" \
+    --exclude="backups" \
+    --exclude="db-backups" \
+    -czf "$archive" .
+)
+
+echo "[pre-commit] Backup snapshot created: $archive"
+
+# Block accidental deletion of critical SQL scripts
+deleted_critical=$(git diff --cached --name-status | awk '$1=="D" && $2 ~ /^init-scripts\// {print $2}')
+if [ -n "$deleted_critical" ]; then
+  echo "[pre-commit] ERROR: Attempt to delete critical files in init-scripts:" >&2
+  echo "$deleted_critical" >&2
+  echo "Commit blocked. Restore the files or use --no-verify only if you are absolutely sure." >&2
+  exit 1
+fi
+
+exit 0
+

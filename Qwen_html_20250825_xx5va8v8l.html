@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Jurídico - Capitolio Consultores</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        
+        .navbar {
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 100px 0;
+            margin-bottom: 50px;
+        }
+        
+        .feature-card {
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: none;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 100%;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .section-title {
+            position: relative;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+        }
+        
+        .section-title:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: var(--secondary-color);
+        }
+        
+        .team-member {
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        
+        .team-member:hover {
+            transform: scale(1.03);
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-top: 50px;
+        }
+        
+        .dashboard-card {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .module-icon {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: var(--secondary-color);
+        }
+        
+        .footer {
+            background: var(--dark-color);
+            color: white;
+            padding: 40px 0;
+            margin-top: 50px;
+        }
+        
+        .contact-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--secondary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: white;
+        }
+        
+        .btn-primary {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+        
+        .btn-accent {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            color: white;
+        }
+        
+        .btn-accent:hover {
+            background-color: #c0392b;
+            border-color: #c0392b;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-balance-scale me-2"></i>Nexus Jurídico
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#inicio">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#servicios">Servicios</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#nosotros">Nosotros</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#blog">Blog</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contacto">Contacto</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-accent ms-lg-3" href="#login">
+                            <i class="fas fa-lock me-1"></i>Acceso Abogados
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="inicio" class="hero-section">
+        <div class="container text-center">
+            <h1 class="display-4 fw-bold mb-4">Asesoría Legal Estratégica. Resultados Excepcionales.</h1>
+            <p class="lead mb-5">Capitolio Consultores: Su socio legal de confianza con tecnología avanzada</p>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="#servicios" class="btn btn-light btn-lg">Nuestros Servicios</a>
+                <a href="#contacto" class="btn btn-outline-light btn-lg">Agende una Consulta</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="servicios" class="py-5">
+        <div class="container">
+            <h2 class="text-center section-title">Nuestras Áreas de Práctica</h2>
+            <div class="row g-4 mt-4">
+                <div class="col-md-4">
+                    <div class="card feature-card h-100">
+                        <div class="card-body text-center p-4">
+                            <div class="module-icon">
+                                <i class="fas fa-building"></i>
+                            </div>
+                            <h4 class="card-title">Derecho Mercantil</h4>
+                            <p class="card-text">Asesoría integral en transacciones comerciales, fusiones y adquisiciones, contratos y derecho societario.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card feature-card h-100">
+                        <div class="card-body text-center p-4">
+                            <div class="module-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <h4 class="card-title">Derecho Civil</h4>
+                            <p class="card-text">Soluciones en derecho de familia, sucesiones, propiedad inmobiliaria y obligaciones civiles.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card feature-card h-100">
+                        <div class="card-body text-center p-4">
+                            <div class="module-icon">
+                                <i class="fas fa-hard-hat"></i>
+                            </div>
+                            <h4 class="card-title">Derecho Laboral</h4>
+                            <p class="card-text">Representación en conflictos laborales, negociación colectiva y consultoría en relaciones laborales.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="nosotros" class="py-5 bg-light">
+        <div class="container">
+            <h2 class="text-center section-title">Quiénes Somos</h2>
+            <div class="row align-items-center mt-5">
+                <div class="col-lg-6">
+                    <h3>Nuestra Historia</h3>
+                    <p>Capitolio Consultores nació con la visión de transformar la práctica legal mediante la integración de tecnología avanzada y experiencia jurídica. Fundada en 2010, hemos crecido para convertirnos en referentes en asesoría legal estratégica.</p>
+                    
+                    <h3 class="mt-4">Misión, Visión y Valores</h3>
+                    <p><strong>Misión:</strong> Brindar soluciones legales innovadoras y efectivas que impulsen el éxito de nuestros clientes.</p>
+                    <p><strong>Visión:</strong> Ser el despacho legal más avanzado y confiable en Venezuela, reconocido por nuestra excelencia y uso de tecnología.</p>
+                    <p><strong>Valores:</strong> Integridad, excelencia, innovación, compromiso y confidencialidad.</p>
+                </div>
+                <div class="col-lg-6">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="team-member bg-white p-3 text-center">
+                                <img src="https://placehold.co/150x150" class="rounded-circle mb-3" alt="Abogado">
+                                <h5>Dr. Juan Pérez</h5>
+                                <p class="text-muted">Socio Principal</p>
+                                <a href="#" class="btn btn-sm btn-outline-primary">LinkedIn</a>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="team-member bg-white p-3 text-center">
+                                <img src="https://placehold.co/150x150" class="rounded-circle mb-3" alt="Abogada">
+                                <h5>Dra. María González</h5>
+                                <p class="text-muted">Asociada Senior</p>
+                                <a href="#" class="btn btn-sm btn-outline-primary">LinkedIn</a>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="team-member bg-white p-3 text-center">
+                                <img src="https://placehold.co/150x150" class="rounded-circle mb-3" alt="Abogado">
+                                <h5>Dr. Carlos Rodríguez</h5>
+                                <p class="text-muted">Especialista Mercantil</p>
+                                <a href="#" class="btn btn-sm btn-outline-primary">LinkedIn</a>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="team-member bg-white p-3 text-center">
+                                <img src="https://placehold.co/150x150" class="rounded-circle mb-3" alt="Abogada">
+                                <h5>Dra. Ana Martínez</h5>
+                                <p class="text-muted">Especialista Laboral</p>
+                                <a href="#" class="btn btn-sm btn-outline-primary">LinkedIn</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Blog Section -->
+    <section id="blog" class="py-5">
+        <div class="container">
+            <h2 class="text-center section-title">Centro de Conocimiento</h2>
+            <div class="row g-4 mt-4">
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <img src="https://placehold.co/400x200" class="card-img-top" alt="Artículo legal">
+                        <div class="card-body">
+                            <span class="badge bg-primary mb-2">Novedades Legales</span>
+                            <h5 class="card-title">Nuevas regulaciones en derecho mercantil venezolano</h5>
+                            <p class="card-text">Análisis detallado de las últimas modificaciones en el marco legal mercantil y su impacto en las empresas.</p>
+                            <a href="#" class="btn btn-outline-primary">Leer más</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <img src="https://placehold.co/400x200" class="card-img-top" alt="Artículo legal">
+                        <div class="card-body">
+                            <span class="badge bg-success mb-2">Casos de Éxito</span>
+                            <h5 class="card-title">Resolución favorable en conflicto laboral complejo</h5>
+                            <p class="card-text">Cómo nuestro equipo logró un resultado exitoso en un caso de conflictos colectivos laborales.</p>
+                            <a href="#" class="btn btn-outline-primary">Leer más</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <img src="https://placehold.co/400x200" class="card-img-top" alt="Artículo legal">
+                        <div class="card-body">
+                            <span class="badge bg-info mb-2">Análisis Jurisprudencial</span>
+                            <h5 class="card-title">Evolución de la jurisprudencia en derecho civil</h5>
+                            <p class="card-text">Estudio comparativo de sentencias recientes que han modificado la interpretación de normas civiles.</p>
+                            <a href="#" class="btn btn-outline-primary">Leer más</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contacto" class="py-5 bg-light">
+        <div class="container">
+            <h2 class="text-center section-title">Contáctenos</h2>
+            <div class="row mt-5">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title mb-4">Formulario de Contacto</h4>
+                            <form>
+                                <div class="mb-3">
+                                    <label for="nombre" class="form-label">Nombre completo</label>
+                                    <input type="text" class="form-control" id="nombre" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Correo electrónico</label>
+                                    <input type="email" class="form-control" id="email" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="telefono" class="form-label">Teléfono</label>
+                                    <input type="tel" class="form-control" id="telefono">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="mensaje" class="form-label">Mensaje</label>
+                                    <textarea class="form-control" id="mensaje" rows="4" required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">Enviar Mensaje</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="d-flex align-items-start mb-4">
+                        <div class="contact-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div>
+                            <h5>Dirección</h5>
+                            <p>Av. Principal de Chuao, Edif. Capitolio, Piso 10<br>Caracas, Venezuela</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start mb-4">
+                        <div class="contact-icon">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        <div>
+                            <h5>Teléfono</h5>
+                            <p>+58 212 123 4567<br><a href="tel:+582121234567" class="btn btn-success mt-2"><i class="fas fa-phone-alt me-2"></i>Llamar ahora</a></p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start mb-4">
+                        <div class="contact-icon">
+                            <i class="fab fa-whatsapp"></i>
+                        </div>
+                        <div>
+                            <h5>WhatsApp</h5>
+                            <p>+58 412 987 6543<br><a href="https://wa.me/584129876543" class="btn btn-success mt-2"><i class="fab fa-whatsapp me-2"></i>Enviar mensaje</a></p>
+                        </div>
+                    </div>
+                    <div class="ratio ratio-16x9">
+                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3921.8570000000003!2d-66.880932!3d10.490833!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTDCsDI5JzI3LjAiTiA2NsKwNTInNTAuMyJX!5e0!3m2!1ses!2sve!4v1620000000000!5m2!1ses!2sve" allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Login Section -->
+    <section id="login" class="py-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-5">
+                    <div class="login-container">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-lock fa-3x text-primary mb-3"></i>
+                            <h3>Acceso a Nexus Jurídico</h3>
+                            <p class="text-muted">Ingrese sus credenciales para acceder al área privada</p>
+                        </div>
+                        <form>
+                            <div class="mb-3">
+                                <label for="emailLogin" class="form-label">Correo Electrónico</label>
+                                <input type="email" class="form-control" id="emailLogin" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="passwordLogin" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="passwordLogin" required>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="remember">
+                                <label class="form-check-label" for="remember">Recordarme</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 mb-3">Iniciar Sesión</button>
+                            <div class="text-center">
+                                <a href="#" class="text-decoration-none">¿Olvidó su contraseña?</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard Section (Simulación) -->
+    <section id="dashboard" class="py-5 bg-light">
+        <div class="container">
+            <h2 class="text-center section-title">Panel de Control de Nexus Jurídico</h2>
+            <p class="text-center text-muted mb-5">Área privada para abogados de Capitolio Consultores</p>
+            
+            <div class="row g-4 mb-5">
+                <div class="col-md-3">
+                    <div class="dashboard-card bg-white p-4 text-center">
+                        <i class="fas fa-file-alt fa-2x text-primary mb-3"></i>
+                        <h4>Gestor Documental</h4>
+                        <p class="text-muted">Carga y procesamiento inteligente de documentos legales</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="dashboard-card bg-white p-4 text-center">
+                        <i class="fas fa-folder-open fa-2x text-success mb-3"></i>
+                        <h4>Gestión de Casos</h4>
+                        <p class="text-muted">Expedientes digitales con seguimiento de plazos y tareas</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="dashboard-card bg-white p-4 text-center">
+                        <i class="fas fa-search fa-2x text-info mb-3"></i>
+                        <h4>Búsqueda Semántica</h4>
+                        <p class="text-muted">Consultas inteligentes en toda la base documental</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="dashboard-card bg-white p-4 text-center">
+                        <i class="fas fa-robot fa-2x text-warning mb-3"></i>
+                        <h4>Asistente Jurídico</h4>
+                        <p class="text-muted">Investigación legal con inteligencia artificial</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <i class="fas fa-tasks me-2"></i>Próximos Plazos y Tareas
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <strong>Audiencia Preliminar - Caso Mercantil #2025-045</strong>
+                                            <br><small class="text-muted">Cliente: Industrias XYZ C.A.</small>
+                                        </div>
+                                        <span class="badge bg-danger">Mañana</span>
+                                    </div>
+                                </li>
+                                <li class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <strong>Entrega de Documentos - Caso Laboral #2025-078</strong>
+                                            <br><small class="text-muted">Cliente: María Rodríguez</small>
+                                        </div>
+                                        <span class="badge bg-warning text-dark">En 3 días</span>
+                                    </div>
+                                </li>
+                                <li class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <strong>Revisión de Contrato - Consultoría</strong>
+                                            <br><small class="text-muted">Cliente: Servicios ABC</small>
+                                        </div>
+                                        <span class="badge bg-success">En 1 semana</span>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <i class="fas fa-chart-line me-2"></i>Resumen de Casos Activos
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Total de Casos:</span>
+                                <strong>24</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Casos Mercantiles:</span>
+                                <strong>12</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Casos Civiles:</span>
+                                <strong>7</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Casos Laborales:</span>
+                                <strong>5</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4 mb-lg-0">
+                    <h4 class="mb-4">Capitolio Consultores</h4>
+                    <p>Su socio legal de confianza con tecnología avanzada para resultados excepcionales.</p>
+                    <div class="d-flex gap-2">
+                        <a href="#" class="btn btn-outline-light btn-sm"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="btn btn-outline-light btn-sm"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="btn btn-outline-light btn-sm"><i class="fab fa-facebook-f"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4 mb-lg-0">
+                    <h4 class="mb-4">Enlaces Rápidos</h4>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#inicio" class="text-white text-decoration-none">Inicio</a></li>
+                        <li class="mb-2"><a href="#servicios" class="text-white text-decoration-none">Servicios</a></li>
+                        <li class="mb-2"><a href="#nosotros" class="text-white text-decoration-none">Nosotros</a></li>
+                        <li class="mb-2"><a href="#blog" class="text-white text-decoration-none">Blog</a></li>
+                        <li class="mb-2"><a href="#contacto" class="text-white text-decoration-none">Contacto</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4">
+                    <h4 class="mb-4">Información de Contacto</h4>
+                    <p><i class="fas fa-map-marker-alt me-2"></i> Av. Principal de Chuao, Edif. Capitolio, Piso 10, Caracas</p>
+                    <p><i class="fas fa-phone me-2"></i> +58 212 123 4567</p>
+                    <p><i class="fas fa-envelope me-2"></i> info@capitolioconsultores.com</p>
+                </div>
+            </div>
+            <hr class="my-4 bg-light">
+            <div class="text-center">
+                <p class="mb-0">&copy; 2025 Capitolio Consultores. Todos los derechos reservados.</p>
+                <p class="small mb-0">Plataforma Nexus Jurídico - Desarrollada por [Tu Nombre Completo], Arquitecto de Software</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Form submission simulation
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                alert('Formulario enviado. En una implementación real, esta información sería procesada por el servidor.');
+            });
+        });
+    </script>
+</body>
+</html>

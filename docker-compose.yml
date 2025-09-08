@@ -1,0 +1,26 @@
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    container_name: nexus-postgres
+    environment:
+      POSTGRES_DB: nexus_juridico
+      POSTGRES_USER: nexus_admin
+      POSTGRES_PASSWORD: nexus123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --auth-host=md5 --auth-local=trust"
+    ports:
+      - "5432:5432"
+    volumes:
+      - nexus-postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus_admin -d nexus_juridico"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  nexus-postgres-data:
+    name: nexus-postgres-data
