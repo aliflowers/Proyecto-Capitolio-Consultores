@@ -7,10 +7,10 @@ mkdir -p "$backup_dir"
 
 # Timestamp
 stamp=$(date +%Y%m%d_%H%M%S)
-archive="$backup_dir/repo_$stamp.tar.gz"
+# Use a relative archive path to avoid Windows path issues with tar
+rel_archive="backups/repo_$stamp.tar.gz"
 
 # Create a snapshot excluding heavy/ephemeral dirs
-# bsdtar/tar is available with Git for Windows
 ( 
   cd "$repo_root"
   tar \
@@ -19,10 +19,11 @@ archive="$backup_dir/repo_$stamp.tar.gz"
     --exclude=".next" \
     --exclude="backups" \
     --exclude="db-backups" \
-    -czf "$archive" .
+    -czf "$rel_archive" .
 )
 
-echo "[pre-commit] Backup snapshot created: $archive"
+echo "[pre-commit] Backup snapshot created: $repo_root/$rel_archive"
+
 
 # Block accidental deletion of critical SQL scripts
 deleted_critical=$(git diff --cached --name-status | awk '$1=="D" && $2 ~ /^init-scripts\// {print $2}')

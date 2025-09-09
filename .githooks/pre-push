@@ -4,11 +4,11 @@ repo_root=$(git rev-parse --show-toplevel)
 backup_dir="$repo_root/backups"
 mkdir -p "$backup_dir"
 stamp=$(date +%Y%m%d_%H%M%S)
-archive="$backup_dir/prepush_$stamp.tar.gz"
+rel_archive="backups/prepush_$stamp.tar.gz"
 (
   cd "$repo_root"
-  tar --exclude=".git" --exclude="node_modules" --exclude=".next" --exclude="backups" --exclude="db-backups" -czf "$archive" .
+  tar --exclude=".git" --exclude="node_modules" --exclude=".next" --exclude="backups" --exclude="db-backups" -czf "$rel_archive" .
 )
-echo "[pre-push] Backup snapshot created: $archive"
+echo "[pre-push] Backup snapshot created: $repo_root/$rel_archive"
 exit 0
 

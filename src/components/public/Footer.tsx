@@ -6,7 +6,8 @@ export default function Footer() {
   return (
     <footer className="bg-dark text-white py-10 mt-10">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* 4 columnas en desktop para reservar espacio a la derecha para un segundo logo */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-start">
           <div>
             <div className="mb-4">
               <Image 
@@ -48,6 +49,16 @@ export default function Footer() {
             <p className="text-gray-300"><i className="fas fa-map-marker-alt me-2"></i>Centro Empresarial Torre Imperial,c calle Boyaca entre calle carabobo y calle Pichincha, Maracay, Edo Aragua.</p>
             <p className="text-gray-300"><i className="fas fa-phone me-2"></i>+58 424 331 3203</p>
             <p className="text-gray-300"><i className="fas fa-envelope me-2"></i>info@capitolioconsultores.com</p>
+          </div>
+          {/* Columna del logo secundario a la derecha */}
+          <div className="flex md:justify-end">
+            <Image
+              src="/yovera_eliezer_logo2.png"
+              alt="Yovera Eliezer Logo"
+              width={320}
+              height={120}
+              className="h-28 w-auto opacity-95 hover:opacity-100 transition-opacity duration-200"
+            />
           </div>
         </div>
         <hr className="my-8 border-gray-700" />

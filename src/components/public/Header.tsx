@@ -87,7 +87,7 @@ export default function Header() {
     }`}>
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
-          {/* Logo */}
+          {/* Logo principal (izquierda) */}
           <Link href="/" className="flex items-center">
             <Image 
               src="/logo_principal_menu_header.png" 
@@ -99,8 +99,8 @@ export default function Header() {
             />
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-1">
+          {/* Navegación de escritorio centrada */}
+          <div className="hidden lg:flex items-center space-x-1 flex-1 justify-center">
             <Link 
               href="/" 
               className="px-4 py-2 rounded-md text-white hover:bg-white/20 hover:text-black transition-all duration-300 font-medium"
@@ -263,7 +263,18 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Logo secundario (derecha, solo escritorio) */}
+          <div className="hidden lg:block">
+            <Image
+              src="/yovera_eliezer_logo1.png"
+              alt="Yovera Eliezer Logo"
+              width={180}
+              height={60}
+              className="h-14 w-auto ml-4 opacity-95 hover:opacity-100 transition-opacity duration-200"
+            />
+          </div>
+
+          {/* Botón menú móvil */}
           <div className="lg:hidden">
             <button className="p-2 rounded-md hover:bg-white/20 transition-colors duration-200">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
