@@ -301,13 +301,25 @@ function EventForm({ value, onChange, onSave, onDelete }: {
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Color del evento</label>
         <div className="flex flex-wrap gap-2 items-center">
-          {['#222052','#FFDE59','#e74c3c','#16a34a','#2563eb','#0891b2','#9333ea','#f97316','#dc2626','#059669','#0ea5e9','#64748b','#111827','#f59e0b','#9d174d'].map(c => (
-            <button type="button" key={c} title={c}
-              className={`h-6 w-6 rounded ${value.color===c?'ring-2 ring-offset-1 ring-primary':''}`}
-              style={{ backgroundColor: c }}
-              onClick={() => set('color', c)}
-            />
-          ))}
+          {['#222052','#FFDE59','#e74c3c','#16a34a','#2563eb','#0891b2','#9333ea','#f97316','#dc2626','#059669','#0ea5e9','#64748b','#111827','#f59e0b','#9d174d'].map(c => {
+            const selected = value.color === c;
+            const isLight = (() => { try { const hex = c.replace('#',''); const r=parseInt(hex.substring(0,2),16); const g=parseInt(hex.substring(2,4),16); const b=parseInt(hex.substring(4,6),16); return ((r*299 + g*587 + b*114)/1000) > 150; } catch { return false; } })();
+            const iconColor = isLight ? '#111827' : '#ffffff';
+            return (
+              <button type="button" key={c} title={c}
+                aria-pressed={selected}
+                className={`relative h-6 w-6 rounded focus:outline-none ${selected?'ring-2 ring-offset-2 ring-primary':''}`}
+                style={{ backgroundColor: c }}
+                onClick={() => set('color', c)}
+              >
+                {selected && (
+                  <svg className="absolute inset-0 m-auto h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
       <div>
