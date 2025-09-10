@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/server-auth';
 import { query } from '@/lib/db';
+import { getCalendarClientForUser } from '@/lib/google-calendar';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,62 @@ export async function GET(req: NextRequest) {
       reminders: r.reminders || [],
     }));
 
-    return NextResponse.json({ success: true, events });
+    // Fase 2: Lectura read-only desde Google Calendar (si el usuario está conectado)
+    const remoteEvents: any[] = [];
+    try {
+      const gcal = await getCalendarClientForUser(user.id);
+      if (gcal) {
+        // Intentar usar un calendario seleccionado por el usuario; si no existe, usar 'primary'
+        let calendarId = 'primary';
+        try {
+          const sel = await query(
+            "SELECT provider_calendar_id FROM calendars WHERE user_id=$1 AND provider='google' AND is_primary=TRUE LIMIT 1",
+            [user.id]
+          );
+          if (sel.rowCount && sel.rows[0].provider_calendar_id) {
+            calendarId = sel.rows[0].provider_calendar_id as string;
+          }
+        } catch {}
+
+        let pageToken: string | undefined = undefined;
+        do {
+          const { data } = await gcal.events.list({
+            calendarId,
+            timeMin: start.toISOString(),
+            timeMax: end.toISOString(),
+            singleEvents: true,
+            orderBy: 'startTime',
+            maxResults: 2500,
+            pageToken,
+          } as any);
+
+          const items = data.items || [];
+          for (const ev of items) {
+            const isAllDay = !!(ev.start && ev.start.date) && !ev.start?.dateTime;
+            const startStr = (ev.start?.dateTime || ev.start?.date) as string | undefined;
+            const endStr = (ev.end?.dateTime || ev.end?.date) as string | undefined;
+            if (!startStr || !endStr) continue;
+
+            remoteEvents.push({
+              id: `g_${ev.id}`,
+              title: ev.summary || '(sin título)',
+              start: startStr,
+              end: endStr,
+              allDay: isAllDay,
+              description: ev.description || null,
+              location: ev.location || null,
+              color: '#2563eb',
+            });
+          }
+          pageToken = (data.nextPageToken as string | undefined) || undefined;
+        } while (pageToken);
+      }
+    } catch (e) {
+      console.error('Google Calendar fetch error:', (e as any)?.message || e);
+    }
+
+    const allEvents = [...events, ...remoteEvents];
+    return NextResponse.json({ success: true, events: allEvents });
   } catch (err: any) {
     console.error('GET /api/calendar/events error:', err);
     return NextResponse.json({ success: false, error: 'Error al obtener eventos' }, { status: 500 });

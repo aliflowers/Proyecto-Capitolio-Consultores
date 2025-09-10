@@ -197,8 +197,11 @@ function eventStyleGetter(event?: any) {
       <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Calendario</h1>
 
       <div className="mb-4 flex items-center justify-between bg-white rounded border p-3">
-        <div className="text-sm">
-          <span className="font-semibold">Google Calendar: </span>
+        <div className="text-sm flex items-center gap-2">
+          <span className="inline-flex items-center gap-1">
+            <GoogleCalendarIcon />
+            <span className="font-semibold">Google Calendar:</span>
+          </span>
           {googleConnected ? <span className="text-green-700">Conectado</span> : <span className="text-gray-600">No conectado</span>}
         </div>
         <div className="flex gap-2">
@@ -282,6 +285,19 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
         {children}
       </div>
     </div>
+  )
+}
+
+function GoogleCalendarIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="4" fill="#1a73e8"/>
+      <rect x="3" y="3" width="18" height="6" rx="4" fill="#4285F4"/>
+      <rect x="3" y="3" width="18" height="3" rx="4" fill="#DB4437"/>
+      <rect x="3" y="6" width="18" height="3" fill="#F4B400"/>
+      <rect x="3" y="9" width="18" height="3" fill="#0F9D58"/>
+      <text x="12" y="17" textAnchor="middle" fontSize="9" fontFamily="Arial, Helvetica, sans-serif" fill="#ffffff">31</text>
+    </svg>
   )
 }
 
