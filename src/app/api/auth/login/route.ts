@@ -22,6 +22,15 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    // Verificar si el usuario está deshabilitado
+    const disabledCheck = await (await import('@/lib/db')).query('SELECT is_disabled FROM users WHERE id = $1', [user.id]);
+    if (disabledCheck.rows?.[0]?.is_disabled) {
+      return NextResponse.json(
+        { success: false, error: 'Acceso bloqueado. Contacte al administrador.' },
+        { status: 403 }
+      );
+    }
     
     // Crear sesión
     const token = await createSession(user.id, user.email);

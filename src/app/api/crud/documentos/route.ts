@@ -37,9 +37,15 @@ export async function GET(request: Request) {
       LEFT JOIN clientes cl_indirect ON ec.cliente_id = cl_indirect.id
     `;
 
-    const whereClauses: string[] = ['d.user_id = $1'];
-    const queryParams: any[] = [user.id];
-    let paramIndex = 1;
+    const whereClauses: string[] = [];
+    const queryParams: any[] = [];
+    let paramIndex = 0;
+
+    if (!user.is_super_admin) {
+      paramIndex++;
+      queryParams.push(user.id);
+      whereClauses.push('(d.user_id = $' + paramIndex + " OR EXISTS (SELECT 1 FROM resource_shares s WHERE s.resource_type='documento' AND s.resource_id=d.id AND s.target_user_id=$" + paramIndex + '))');
+    }
 
     if (filters.name) {
       paramIndex++;
@@ -214,9 +220,9 @@ export async function PUT(request: Request) {
         mime_type = COALESCE($3, mime_type),
         document_type = COALESCE($4, document_type),
         client_id = COALESCE($5, client_id) -- Añadido
-      WHERE id = $6
+      WHERE id = $6 AND user_id = $7
       RETURNING id, user_id, name, path, mime_type, document_type, client_id, created_at
-    `, [name, path, mime_type, document_type, client_id, id]);
+    `, [name, path, mime_type, document_type, client_id, id, (await protectApiRoute() as any).user.id]);
     
     if (result.rowCount === 0) {
       return NextResponse.json(

@@ -46,8 +46,13 @@ export async function GET(request: Request) {
       FROM clientes c
     `;
 
-    const whereClauses: string[] = ['c.user_id = $1'];
-    const queryParams: any[] = [user.id];
+    const whereClauses: string[] = [];
+    const queryParams: any[] = [];
+
+    if (!user.is_super_admin) {
+      whereClauses.push('(c.user_id = $1 OR EXISTS (SELECT 1 FROM resource_shares s WHERE s.resource_type = \'cliente\' AND s.resource_id = c.id AND s.target_user_id = $1))');
+      queryParams.push(user.id);
+    }
 
     if (filters.full_name) {
       queryParams.push(`%${filters.full_name}%`);
@@ -212,9 +217,9 @@ export async function PUT(request: Request) {
         numero_documento = COALESCE($5, numero_documento),
         nacionalidad = COALESCE($6, nacionalidad),
         direccion = COALESCE($7, direccion)
-      WHERE id = $8
+      WHERE id = $8 AND user_id = $9
       RETURNING *
-    `, [full_name, email, phone, tipo_documento, numero_documento, nacionalidad, direccion, id]);
+    `, [full_name, email, phone, tipo_documento, numero_documento, nacionalidad, direccion, id, (authResult as any).user.id]);
     
     if (result.rowCount === 0) {
       return NextResponse.json({ success: false, error: 'Cliente no encontrado' }, { status: 404 });
@@ -261,6 +266,15 @@ export async function DELETE(request: Request) {
       );
     }
     
+    // Verificar dueño
+    const own = await query('SELECT user_id FROM clientes WHERE id=$1', [id]);
+    if (own.rowCount === 0) {
+      return NextResponse.json({ success: false, error: 'Cliente no encontrado' }, { status: 404 });
+    }
+    if (own.rows[0].user_id !== (authResult as any).user.id) {
+      return NextResponse.json({ success: false, error: 'No autorizado para eliminar este cliente' }, { status: 403 });
+    }
+
     // Eliminar relaciones primero (por clave foránea)
     await query('DELETE FROM expedientes_clientes WHERE cliente_id = $1', [id]);
     

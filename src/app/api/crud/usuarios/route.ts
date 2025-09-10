@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
     
     const { user } = authResult;
     
-    // Verificar permisos: solo usuarios con rol 'admin' o permiso 'users:read'
-    if (!(await requireRole(user, 'admin') || await requirePermission(user, 'users', 'read'))) {
+    // Verificar permisos: solo super admin puede listar usuarios (módulo de administración)
+    if (!user.is_super_admin) {
       return NextResponse.json(
         { 
           success: false, 
@@ -98,8 +98,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Verificar permisos: solo administradores pueden crear usuarios
-    if (!(await requireRole(user, 'admin'))) {
+    // Verificar permisos: solo super administradores pueden crear usuarios
+    if (!user.is_super_admin) {
       return NextResponse.json(
         { 
           success: false, 
@@ -220,8 +220,8 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    // Verificar permisos: solo el propio usuario o administradores pueden actualizar
-    if (user.id !== id && !(await requireRole(user, 'admin'))) {
+    // Verificar permisos: solo el propio usuario o super administradores pueden actualizar
+    if (user.id !== id && !user.is_super_admin) {
       return NextResponse.json(
         { 
           success: false, 
@@ -310,8 +310,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    // Verificar permisos: solo administradores pueden eliminar usuarios
-    if (!(await requireRole(user, 'admin'))) {
+    // Verificar permisos: solo super administradores pueden eliminar usuarios
+    if (!user.is_super_admin) {
       return NextResponse.json(
         { 
           success: false, 

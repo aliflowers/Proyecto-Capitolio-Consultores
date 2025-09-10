@@ -38,8 +38,13 @@ export async function GET(request: Request) {
       LEFT JOIN clientes c ON ec.cliente_id = c.id
     `;
 
-    const whereClauses: string[] = ['e.user_id = $1'];
-    const queryParams: any[] = [user.id];
+    const whereClauses: string[] = [];
+    const queryParams: any[] = [];
+
+    if (!user.is_super_admin) {
+      whereClauses.push('(e.user_id = $1 OR EXISTS (SELECT 1 FROM resource_shares s WHERE s.resource_type = \'expediente\' AND s.resource_id = e.id AND s.target_user_id = $1))');
+      queryParams.push(user.id);
+    }
 
     if (filters.expediente_number) {
       queryParams.push(`%${filters.expediente_number}%`);
@@ -181,9 +186,9 @@ export async function PUT(request: Request) {
         status = COALESCE($2, status),
         description = COALESCE($3, description),
         updated_at = NOW()
-      WHERE id = $4
+      WHERE id = $4 AND user_id = $5
       RETURNING *
-    `, [expediente_name, status, description, id]);
+    `, [expediente_name, status, description, id, authResult.user.id]);
     
     if (result.rowCount === 0) {
       return NextResponse.json({ success: false, error: 'Expediente no encontrado' }, { status: 404 });
@@ -224,6 +229,15 @@ export async function DELETE(request: Request) {
     }
     
     await query('BEGIN');
+    // Restringir a dueño del expediente
+    const ownerCheck = await query('SELECT user_id FROM expedientes WHERE id = $1', [id]);
+    if (ownerCheck.rowCount === 0) {
+      return NextResponse.json({ success: false, error: 'Expediente no encontrado' }, { status: 404 });
+    }
+    if (ownerCheck.rows[0].user_id !== (authResult as any).user.id) {
+      return NextResponse.json({ success: false, error: 'No autorizado para eliminar este expediente' }, { status: 403 });
+    }
+
     await query('DELETE FROM expedientes_documentos WHERE expediente_id = $1', [id]);
     await query('DELETE FROM expedientes_clientes WHERE expediente_id = $1', [id]);
     const result = await query('DELETE FROM expedientes WHERE id = $1 RETURNING id, expediente_name', [id]);
