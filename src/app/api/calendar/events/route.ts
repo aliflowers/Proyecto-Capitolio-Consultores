@@ -14,7 +14,7 @@ function parseDate(value?: string | null) {
 
 async function ensureDefaultCalendar(userId: string) {
   // Create a default calendar if user has none
-  const existing = await query('SELECT id FROM calendars WHERE user_id = $1 ORDER BY is_primary DESC LIMIT 1', [userId]);
+  const existing = await query("SELECT id FROM calendars WHERE user_id = $1 AND provider='local' ORDER BY is_primary DESC LIMIT 1", [userId]);
   if (existing.rowCount && existing.rowCount > 0) return existing.rows[0].id as string;
   const result = await query(
     `INSERT INTO calendars (user_id, name, time_zone, color, is_primary)
@@ -130,19 +130,58 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Faltan campos obligatorios' }, { status: 400 });
     }
 
-    const calendarId = await ensureDefaultCalendar(user.id);
+    const localCalendarId = await ensureDefaultCalendar(user.id);
 
-    const result = await query(
+    const insertRes = await query(
       `INSERT INTO events (user_id, calendar_id, title, description, location, start_at, end_at, all_day, color, reminders)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING id, title, start_at, end_at, all_day, description, location, calendar_id, color, reminders`,
-      [user.id, calendarId, title, description || null, location || null, new Date(start).toISOString(), new Date(end).toISOString(), !!allDay, color || '#222052', Array.isArray(reminders) ? reminders : []]
+       RETURNING id, title, start_at, end_at, all_day, description, location, calendar_id, color, reminders, google_event_id`,
+      [user.id, localCalendarId, title, description || null, location || null, new Date(start).toISOString(), new Date(end).toISOString(), !!allDay, color || '#222052', Array.isArray(reminders) ? reminders : []]
     );
 
-    const r = result.rows[0];
+    const ev = insertRes.rows[0];
+
+    // Intentar reflejar en Google si hay calendario seleccionado
+    try {
+      const gcal = await getCalendarClientForUser(user.id);
+      if (gcal) {
+        let sel = await query("SELECT provider_calendar_id, time_zone FROM calendars WHERE user_id=$1 AND provider='google' AND is_primary=TRUE LIMIT 1", [user.id]);
+        let googleCalendarId: string | null = sel.rowCount ? sel.rows[0].provider_calendar_id : 'primary';
+        const tz: string = sel.rowCount ? (sel.rows[0].time_zone || 'UTC') : 'UTC';
+        if (googleCalendarId) {
+          const body: any = {
+            summary: ev.title,
+            description: ev.description || undefined,
+            location: ev.location || undefined,
+            reminders: Array.isArray(ev.reminders) && ev.reminders.length > 0 ? { useDefault: false, overrides: (ev.reminders as number[]).slice(0,5).map((m:number)=>({ method:'popup', minutes:m })) } : undefined,
+          };
+          if (ev.all_day) {
+            const s = new Date(ev.start_at);
+            const e = new Date(ev.end_at);
+            const startDate = s.toISOString().slice(0,10);
+            let endDate = e.toISOString().slice(0,10);
+            if (startDate === endDate) {
+              const d = new Date(s.getTime()); d.setDate(d.getDate()+1); endDate = d.toISOString().slice(0,10);
+            }
+            body.start = { date: startDate, timeZone: tz };
+            body.end = { date: endDate, timeZone: tz };
+          } else {
+            body.start = { dateTime: new Date(ev.start_at).toISOString(), timeZone: tz };
+            body.end = { dateTime: new Date(ev.end_at).toISOString(), timeZone: tz };
+          }
+          const { data } = await gcal.events.insert({ calendarId: googleCalendarId, requestBody: body } as any);
+          if (data?.id) {
+            await query('UPDATE events SET google_event_id=$2 WHERE id=$1', [ev.id, data.id]);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Google insert error:', (e as any)?.message || e);
+    }
+
     return NextResponse.json({ success: true, event: {
-      id: r.id, title: r.title, start: r.start_at, end: r.end_at, allDay: r.all_day,
-      description: r.description, location: r.location, calendarId: r.calendar_id, color: r.color, reminders: r.reminders || []
+      id: ev.id, title: ev.title, start: ev.start_at, end: ev.end_at, allDay: ev.all_day,
+      description: ev.description, location: ev.location, calendarId: ev.calendar_id, color: ev.color, reminders: ev.reminders || []
     }});
   } catch (err: any) {
     console.error('POST /api/calendar/events error:', err);
