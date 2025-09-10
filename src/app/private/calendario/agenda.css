@@ -1,0 +1,16 @@
+/* Separadores y líneas divisorias para la vista Agenda de react-big-calendar */
+
+/* Aumenta la separación visual entre filas en Agenda */
+.rbc-agenda-view .rbc-agenda-table tbody > tr + tr td {
+  border-top: 8px solid #ffffff; /* crea un espacio blanco entre eventos */
+}
+
+/* Línea divisoria sutil (gris) debajo de cada fila, mejora la lectura */
+.rbc-agenda-view .rbc-agenda-table tbody > tr td {
+  border-bottom: 1px solid #e5e7eb; /* tailwind gray-200 */
+}
+
+/* Evitar doble línea en la última fila */
+.rbc-agenda-view .rbc-agenda-table tbody > tr:last-child td {
+  border-bottom: none;
+}
