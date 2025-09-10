@@ -17,7 +17,8 @@ export async function POST(request: Request) {
     const fileName = formData.get('fileName') as string;
     const fileType = formData.get('fileType') as string;
     const documentType = formData.get('documentType') as string;
-    const caseId = formData.get('caseId') as string | null;
+    // Compatibilidad: preferir expedienteId; aceptar caseId si llegara
+    const expedienteId = (formData.get('expedienteId') as string | null) || (formData.get('caseId') as string | null);
     const clientId = formData.get('clientId') as string | null; // Recibir el clientId opcional
 
     if (!file) {
@@ -50,13 +51,13 @@ export async function POST(request: Request) {
 
     const newDocument = result.rows[0];
 
-    // Si se proporcionó un caseId, crear la asociación
-    if (caseId && newDocument.id) {
+    // Si se proporcionó un expedienteId, crear la asociación
+    if (expedienteId && newDocument.id) {
       await query(
-        `INSERT INTO casos_documentos (documento_id, caso_id)
+        `INSERT INTO expedientes_documentos (expediente_id, documento_id)
          VALUES ($1, $2)
-         ON CONFLICT (documento_id, caso_id) DO NOTHING`,
-        [newDocument.id, caseId]
+         ON CONFLICT (expediente_id, documento_id) DO NOTHING`,
+        [expedienteId, newDocument.id]
       );
     }
 

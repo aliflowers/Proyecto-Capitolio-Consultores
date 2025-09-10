@@ -48,13 +48,13 @@ async function testSimpleRLS() {
     // 3. Probar consultas básicas
     console.log('\n🔍 Probando consultas básicas...');
     
-    // Probar acceso a casos
-    try {
-      const casesResult = await query('SELECT COUNT(*) as count FROM casos');
-      console.log(`✅ Acceso a casos permitido: ${casesResult.rows[0].count} registros`);
-    } catch (error) {
-      console.log('❌ Error accediendo a casos:', error.message);
-    }
+// Probar acceso a expedientes
+try {
+  const expResult = await query('SELECT COUNT(*) as count FROM expedientes');
+  console.log(`✅ Acceso a expedientes permitido: ${expResult.rows[0].count} registros`);
+} catch (error) {
+  console.log('❌ Error accediendo a expedientes:', error.message);
+}
     
     // Probar acceso a clientes
     try {

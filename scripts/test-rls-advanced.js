@@ -33,13 +33,13 @@ async function testAdvancedRLSPolicies() {
     
     // 2. Verificar que RLS esté habilitado para tablas principales
     console.log('\n🔍 Verificando que RLS esté habilitado para tablas principales...');
-    const tablesToCheck = [
-      'casos',
+const tablesToCheck = [
+      'expedientes',
       'clientes', 
       'documentos',
       'document_chunks',
-      'casos_clientes',
-      'casos_documentos'
+      'expedientes_clientes',
+      'expedientes_documentos'
     ];
     
     for (const tableName of tablesToCheck) {
@@ -68,12 +68,12 @@ async function testAdvancedRLSPolicies() {
     // 4. Probar consultas con políticas RLS avanzadas
     console.log('\n🔍 Probando consultas con políticas RLS avanzadas...');
     
-    // Probar acceso a casos
+// Probar acceso a expedientes
     try {
-      const casesResult = await query('SELECT COUNT(*) as count FROM casos');
-      console.log(`✅ Acceso a casos permitido: ${casesResult.rows[0].count} registros`);
+      const expResult = await query('SELECT COUNT(*) as count FROM expedientes');
+      console.log(`✅ Acceso a expedientes permitido: ${expResult.rows[0].count} registros`);
     } catch (error) {
-      console.log('❌ Error accediendo a casos:', error.message);
+      console.log('❌ Error accediendo a expedientes:', error.message);
     }
     
     // Probar acceso a clientes
@@ -100,41 +100,41 @@ async function testAdvancedRLSPolicies() {
       console.log('❌ Error accediendo a document_chunks:', error.message);
     }
     
-    // Probar acceso a casos_clientes
+// Probar acceso a expedientes_clientes
     try {
-      const caseClientsResult = await query('SELECT COUNT(*) as count FROM casos_clientes');
-      console.log(`✅ Acceso a casos_clientes permitido: ${caseClientsResult.rows[0].count} registros`);
+      const expClientsResult = await query('SELECT COUNT(*) as count FROM expedientes_clientes');
+      console.log(`✅ Acceso a expedientes_clientes permitido: ${expClientsResult.rows[0].count} registros`);
     } catch (error) {
-      console.log('❌ Error accediendo a casos_clientes:', error.message);
+      console.log('❌ Error accediendo a expedientes_clientes:', error.message);
     }
     
-    // Probar acceso a casos_documentos
+    // Probar acceso a expedientes_documentos
     try {
-      const caseDocumentsResult = await query('SELECT COUNT(*) as count FROM casos_documentos');
-      console.log(`✅ Acceso a casos_documentos permitido: ${caseDocumentsResult.rows[0].count} registros`);
+      const expDocumentsResult = await query('SELECT COUNT(*) as count FROM expedientes_documentos');
+      console.log(`✅ Acceso a expedientes_documentos permitido: ${expDocumentsResult.rows[0].count} registros`);
     } catch (error) {
-      console.log('❌ Error accediendo a casos_documentos:', error.message);
+      console.log('❌ Error accediendo a expedientes_documentos:', error.message);
     }
     
     // 5. Probar inserción con políticas RLS avanzadas
     console.log('\n➕ Probando inserción con políticas RLS avanzadas...');
     
-    // Probar inserción en casos
+// Probar inserción en expedientes
     try {
-      const insertCaseResult = await query(`
-        INSERT INTO casos (user_id, case_name, case_number, status, description)
+      const insertExpResult = await query(`
+        INSERT INTO expedientes (user_id, expediente_name, expediente_number, status, description)
         VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, case_name
-      `, [testUserId, 'Caso de Prueba RLS Avanzado', 'RLS-AV-001', 'abierto', 'Caso de prueba para RLS avanzado']);
+        RETURNING id, expediente_name
+      `, [testUserId, 'Expediente de Prueba RLS Avanzado', 'RLS-AV-001', 'abierto', 'Expediente de prueba para RLS avanzado']);
       
-      const caseId = insertCaseResult.rows[0].id;
-      console.log(`✅ Inserción en casos exitosa: ${caseId} - ${insertCaseResult.rows[0].case_name}`);
+      const expedienteId = insertExpResult.rows[0].id;
+      console.log(`✅ Inserción en expedientes exitosa: ${expedienteId} - ${insertExpResult.rows[0].expediente_name}`);
       
-      // Limpiar el caso de prueba
-      await query('DELETE FROM casos WHERE id = $1', [caseId]);
-      console.log('✅ Limpieza de caso de prueba completada');
+      // Limpiar el expediente de prueba
+      await query('DELETE FROM expedientes WHERE id = $1', [expedienteId]);
+      console.log('✅ Limpieza de expediente de prueba completada');
     } catch (error) {
-      console.log('❌ Error en inserción de casos:', error.message);
+      console.log('❌ Error en inserción de expedientes:', error.message);
     }
     
     // Probar inserción en clientes

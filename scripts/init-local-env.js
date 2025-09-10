@@ -259,9 +259,9 @@ async function checkPostgreSQLStatus() {
 async function verifyDatabaseStructure() {
   logStep(6, 'Verificando estructura de base de datos...');
   
-  const requiredTables = [
-    'users', 'profiles', 'documentos', 'document_chunks', 'casos',
-    'clientes', 'casos_clientes', 'casos_documentos', 'storage_buckets', 'storage_objects'
+const requiredTables = [
+    'users', 'profiles', 'documentos', 'document_chunks', 'expedientes',
+    'clientes', 'expedientes_clientes', 'expedientes_documentos'
   ];
   
   try {

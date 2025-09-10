@@ -62,13 +62,13 @@ async function testRLSPolicies() {
     // 5. Probar consultas con RLS
     console.log('\n🔍 Probando consultas con políticas RLS...');
     
-    // Probar acceso a casos
-    try {
-      const casesResult = await query('SELECT COUNT(*) as count FROM casos');
-      console.log(`✅ Acceso a casos permitido: ${casesResult.rows[0].count} registros`);
-    } catch (error) {
-      console.log('❌ Error accediendo a casos:', error.message);
-    }
+// Probar acceso a expedientes
+try {
+  const expResult = await query('SELECT COUNT(*) as count FROM expedientes');
+  console.log(`✅ Acceso a expedientes permitido: ${expResult.rows[0].count} registros`);
+} catch (error) {
+  console.log('❌ Error accediendo a expedientes:', error.message);
+}
     
     // Probar acceso a clientes
     try {
@@ -89,23 +89,23 @@ async function testRLSPolicies() {
     // 6. Probar inserción con RLS
     console.log('\n➕ Probando inserción con políticas RLS...');
     
-    // Probar inserción en casos
-    try {
-      const insertCaseResult = await query(`
-        INSERT INTO casos (user_id, case_name, case_number, status, description)
+// Probar inserción en expedientes
+try {
+  const insertExpResult = await query(`
+        INSERT INTO expedientes (user_id, expediente_name, expediente_number, status, description)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING id
-      `, [testUserId, 'Caso de Prueba RLS', 'RLS-001', 'abierto', 'Caso de prueba para RLS']);
+      `, [testUserId, 'Expediente de Prueba RLS', 'RLS-001', 'abierto', 'Expediente de prueba para RLS']);
       
-      const caseId = insertCaseResult.rows[0].id;
-      console.log(`✅ Inserción en casos exitosa: ${caseId}`);
+      const expedienteId = insertExpResult.rows[0].id;
+      console.log(`✅ Inserción en expedientes exitosa: ${expedienteId}`);
       
-      // Limpiar el caso de prueba
-      await query('DELETE FROM casos WHERE id = $1', [caseId]);
-      console.log('✅ Limpieza de caso de prueba completada');
-    } catch (error) {
-      console.log('❌ Error en inserción de casos:', error.message);
-    }
+      // Limpiar el expediente de prueba
+      await query('DELETE FROM expedientes WHERE id = $1', [expedienteId]);
+      console.log('✅ Limpieza de expediente de prueba completada');
+} catch (error) {
+  console.log('❌ Error en inserción de expedientes:', error.message);
+}
     
     console.log('\n🎉 Prueba de políticas RLS completada exitosamente!');
     console.log('✅ Todas las políticas RLS están configuradas y funcionando');

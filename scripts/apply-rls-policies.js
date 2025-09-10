@@ -11,12 +11,12 @@ const { query } = require('../src/lib/db');
 
 // Tablas que necesitan RLS
 const TABLES_WITH_RLS = [
-  'casos',
+  'expedientes',
   'clientes', 
   'documentos',
   'document_chunks',
-  'casos_clientes',
-  'casos_documentos'
+  'expedientes_clientes',
+  'expedientes_documentos'
 ];
 
 async function applyRLSPolicies() {
@@ -38,25 +38,25 @@ async function applyRLSPolicies() {
     // 2. Crear políticas RLS básicas para cada tabla
     console.log('\n📋 Creando políticas RLS básicas para cada tabla...');
     
-    // Políticas para casos
-    try {
-      await query(`DROP POLICY IF EXISTS casos_select_policy ON casos`);
-      await query(`CREATE POLICY casos_select_policy ON casos 
+// Políticas para expedientes
+try {
+  await query(`DROP POLICY IF EXISTS expedientes_select_policy ON expedientes`);
+  await query(`CREATE POLICY expedientes_select_policy ON expedientes 
                    FOR SELECT USING (user_id = current_setting('app.current_user_id')::uuid)`);
-      console.log('   ✅ Política casos_select_policy creada');
-    } catch (error) {
-      console.log('   ❌ Error creando política casos_select_policy:', error.message);
-    }
-    
-    try {
-      await query(`DROP POLICY IF EXISTS casos_modify_policy ON casos`);
-      await query(`CREATE POLICY casos_modify_policy ON casos 
+  console.log('   ✅ Política expedientes_select_policy creada');
+} catch (error) {
+  console.log('   ❌ Error creando política expedientes_select_policy:', error.message);
+}
+
+try {
+  await query(`DROP POLICY IF EXISTS expedientes_modify_policy ON expedientes`);
+  await query(`CREATE POLICY expedientes_modify_policy ON expedientes 
                    FOR ALL USING (user_id = current_setting('app.current_user_id')::uuid) 
                    WITH CHECK (user_id = current_setting('app.current_user_id')::uuid)`);
-      console.log('   ✅ Política casos_modify_policy creada');
-    } catch (error) {
-      console.log('   ❌ Error creando política casos_modify_policy:', error.message);
-    }
+  console.log('   ✅ Política expedientes_modify_policy creada');
+} catch (error) {
+  console.log('   ❌ Error creando política expedientes_modify_policy:', error.message);
+}
     
     // Políticas para clientes
     try {
@@ -124,57 +124,57 @@ async function applyRLSPolicies() {
       console.log('   ❌ Error creando política document_chunks_modify_policy:', error.message);
     }
     
-    // Políticas para casos_clientes
-    try {
-      await query(`DROP POLICY IF EXISTS casos_clientes_select_policy ON casos_clientes`);
-      await query(`CREATE POLICY casos_clientes_select_policy ON casos_clientes 
-                   FOR SELECT USING (EXISTS(SELECT 1 FROM casos c 
-                                          WHERE c.id = casos_clientes.caso_id 
-                                          AND c.user_id = current_setting('app.current_user_id')::uuid))`);
-      console.log('   ✅ Política casos_clientes_select_policy creada');
-    } catch (error) {
-      console.log('   ❌ Error creando política casos_clientes_select_policy:', error.message);
-    }
+// Políticas para expedientes_clientes
+try {
+  await query(`DROP POLICY IF EXISTS expedientes_clientes_select_policy ON expedientes_clientes`);
+  await query(`CREATE POLICY expedientes_clientes_select_policy ON expedientes_clientes 
+                   FOR SELECT USING (EXISTS(SELECT 1 FROM expedientes e 
+                                          WHERE e.id = expedientes_clientes.expediente_id 
+                                          AND e.user_id = current_setting('app.current_user_id')::uuid))`);
+  console.log('   ✅ Política expedientes_clientes_select_policy creada');
+} catch (error) {
+  console.log('   ❌ Error creando política expedientes_clientes_select_policy:', error.message);
+}
+
+try {
+  await query(`DROP POLICY IF EXISTS expedientes_clientes_modify_policy ON expedientes_clientes`);
+  await query(`CREATE POLICY expedientes_clientes_modify_policy ON expedientes_clientes 
+                   FOR ALL USING (EXISTS(SELECT 1 FROM expedientes e 
+                                       WHERE e.id = expedientes_clientes.expediente_id 
+                                       AND e.user_id = current_setting('app.current_user_id')::uuid)) 
+                   WITH CHECK (EXISTS(SELECT 1 FROM expedientes e 
+                                    WHERE e.id = expedientes_clientes.expediente_id 
+                                    AND e.user_id = current_setting('app.current_user_id')::uuid))`);
+  console.log('   ✅ Política expedientes_clientes_modify_policy creada');
+} catch (error) {
+  console.log('   ❌ Error creando política expedientes_clientes_modify_policy:', error.message);
+}
     
-    try {
-      await query(`DROP POLICY IF EXISTS casos_clientes_modify_policy ON casos_clientes`);
-      await query(`CREATE POLICY casos_clientes_modify_policy ON casos_clientes 
-                   FOR ALL USING (EXISTS(SELECT 1 FROM casos c 
-                                       WHERE c.id = casos_clientes.caso_id 
-                                       AND c.user_id = current_setting('app.current_user_id')::uuid)) 
-                   WITH CHECK (EXISTS(SELECT 1 FROM casos c 
-                                    WHERE c.id = casos_clientes.caso_id 
-                                    AND c.user_id = current_setting('app.current_user_id')::uuid))`);
-      console.log('   ✅ Política casos_clientes_modify_policy creada');
-    } catch (error) {
-      console.log('   ❌ Error creando política casos_clientes_modify_policy:', error.message);
-    }
-    
-    // Políticas para casos_documentos
-    try {
-      await query(`DROP POLICY IF EXISTS casos_documentos_select_policy ON casos_documentos`);
-      await query(`CREATE POLICY casos_documentos_select_policy ON casos_documentos 
-                   FOR SELECT USING (EXISTS(SELECT 1 FROM casos c 
-                                          WHERE c.id = casos_documentos.caso_id 
-                                          AND c.user_id = current_setting('app.current_user_id')::uuid))`);
-      console.log('   ✅ Política casos_documentos_select_policy creada');
-    } catch (error) {
-      console.log('   ❌ Error creando política casos_documentos_select_policy:', error.message);
-    }
-    
-    try {
-      await query(`DROP POLICY IF EXISTS casos_documentos_modify_policy ON casos_documentos`);
-      await query(`CREATE POLICY casos_documentos_modify_policy ON casos_documentos 
-                   FOR ALL USING (EXISTS(SELECT 1 FROM casos c 
-                                       WHERE c.id = casos_documentos.caso_id 
-                                       AND c.user_id = current_setting('app.current_user_id')::uuid)) 
-                   WITH CHECK (EXISTS(SELECT 1 FROM casos c 
-                                    WHERE c.id = casos_documentos.caso_id 
-                                    AND c.user_id = current_setting('app.current_user_id')::uuid))`);
-      console.log('   ✅ Política casos_documentos_modify_policy creada');
-    } catch (error) {
-      console.log('   ❌ Error creando política casos_documentos_modify_policy:', error.message);
-    }
+// Políticas para expedientes_documentos
+try {
+  await query(`DROP POLICY IF EXISTS expedientes_documentos_select_policy ON expedientes_documentos`);
+  await query(`CREATE POLICY expedientes_documentos_select_policy ON expedientes_documentos 
+                   FOR SELECT USING (EXISTS(SELECT 1 FROM expedientes e 
+                                          WHERE e.id = expedientes_documentos.expediente_id 
+                                          AND e.user_id = current_setting('app.current_user_id')::uuid))`);
+  console.log('   ✅ Política expedientes_documentos_select_policy creada');
+} catch (error) {
+  console.log('   ❌ Error creando política expedientes_documentos_select_policy:', error.message);
+}
+
+try {
+  await query(`DROP POLICY IF EXISTS expedientes_documentos_modify_policy ON expedientes_documentos`);
+  await query(`CREATE POLICY expedientes_documentos_modify_policy ON expedientes_documentos 
+                   FOR ALL USING (EXISTS(SELECT 1 FROM expedientes e 
+                                       WHERE e.id = expedientes_documentos.expediente_id 
+                                       AND e.user_id = current_setting('app.current_user_id')::uuid)) 
+                   WITH CHECK (EXISTS(SELECT 1 FROM expedientes e 
+                                    WHERE e.id = expedientes_documentos.expediente_id 
+                                    AND e.user_id = current_setting('app.current_user_id')::uuid))`);
+  console.log('   ✅ Política expedientes_documentos_modify_policy creada');
+} catch (error) {
+  console.log('   ❌ Error creando política expedientes_documentos_modify_policy:', error.message);
+}
     
     // 3. Verificar políticas RLS creadas
     console.log('\n🔍 Verificando políticas RLS creadas...');

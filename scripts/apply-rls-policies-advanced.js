@@ -9,13 +9,12 @@
 
 const { query } = require('../src/lib/db');
 const { 
-  CASE_RLS_POLICIES,
+  EXPEDIENTE_RLS_POLICIES,
   CLIENT_RLS_POLICIES,
   DOCUMENT_RLS_POLICIES,
   DOCUMENT_CHUNKS_RLS_POLICIES,
-  CASE_CLIENT_RELATIONS_RLS_POLICIES,
-  CASE_DOCUMENT_RELATIONS_RLS_POLICIES,
-  ALL_RLS_POLICIES,
+  EXPEDIENTE_CLIENT_RELATIONS_RLS_POLICIES,
+  EXPEDIENTE_DOCUMENT_RELATIONS_RLS_POLICIES,
   generateRLSPolicySQL,
   generateDropRLSPolicySQL,
   generateEnableRLSSQL,
@@ -25,12 +24,12 @@ const {
 
 // Todas las políticas RLS agrupadas por tabla
 const ALL_TABLE_POLICIES = {
-  'casos': CASE_RLS_POLICIES,
+  'expedientes': EXPEDIENTE_RLS_POLICIES,
   'clientes': CLIENT_RLS_POLICIES,
   'documentos': DOCUMENT_RLS_POLICIES,
   'document_chunks': DOCUMENT_CHUNKS_RLS_POLICIES,
-  'casos_clientes': CASE_CLIENT_RELATIONS_RLS_POLICIES,
-  'casos_documentos': CASE_DOCUMENT_RELATIONS_RLS_POLICIES
+  'expedientes_clientes': EXPEDIENTE_CLIENT_RELATIONS_RLS_POLICIES,
+  'expedientes_documentos': EXPEDIENTE_DOCUMENT_RELATIONS_RLS_POLICIES
 };
 
 async function applyAdvancedRLSPolicies() {
@@ -106,13 +105,13 @@ async function applyAdvancedRLSPolicies() {
     // Probar acceso a tablas con políticas RLS
     console.log('\n🔍 Probando acceso a tablas con políticas RLS avanzadas...');
     
-    // Probar acceso a casos
-    try {
-      const casesResult = await query('SELECT COUNT(*) as count FROM casos');
-      console.log(`✅ Acceso a casos permitido: ${casesResult.rows[0].count} registros`);
-    } catch (error) {
-      console.log('❌ Error accediendo a casos:', error.message);
-    }
+// Probar acceso a expedientes
+try {
+  const expedientesResult = await query('SELECT COUNT(*) as count FROM expedientes');
+  console.log(`✅ Acceso a expedientes permitido: ${expedientesResult.rows[0].count} registros`);
+} catch (error) {
+  console.log('❌ Error accediendo a expedientes:', error.message);
+}
     
     // Probar acceso a clientes
     try {
@@ -138,21 +137,21 @@ async function applyAdvancedRLSPolicies() {
       console.log('❌ Error accediendo a document_chunks:', error.message);
     }
     
-    // Probar acceso a casos_clientes
-    try {
-      const caseClientsResult = await query('SELECT COUNT(*) as count FROM casos_clientes');
-      console.log(`✅ Acceso a casos_clientes permitido: ${caseClientsResult.rows[0].count} registros`);
-    } catch (error) {
-      console.log('❌ Error accediendo a casos_clientes:', error.message);
-    }
-    
-    // Probar acceso a casos_documentos
-    try {
-      const caseDocumentsResult = await query('SELECT COUNT(*) as count FROM casos_documentos');
-      console.log(`✅ Acceso a casos_documentos permitido: ${caseDocumentsResult.rows[0].count} registros`);
-    } catch (error) {
-      console.log('❌ Error accediendo a casos_documentos:', error.message);
-    }
+// Probar acceso a expedientes_clientes
+try {
+  const expClientsResult = await query('SELECT COUNT(*) as count FROM expedientes_clientes');
+  console.log(`✅ Acceso a expedientes_clientes permitido: ${expClientsResult.rows[0].count} registros`);
+} catch (error) {
+  console.log('❌ Error accediendo a expedientes_clientes:', error.message);
+}
+
+// Probar acceso a expedientes_documentos
+try {
+  const expDocumentsResult = await query('SELECT COUNT(*) as count FROM expedientes_documentos');
+  console.log(`✅ Acceso a expedientes_documentos permitido: ${expDocumentsResult.rows[0].count} registros`);
+} catch (error) {
+  console.log('❌ Error accediendo a expedientes_documentos:', error.message);
+}
     
     console.log('\n🎉 Aplicación de políticas RLS avanzadas completada exitosamente!');
     console.log('✅ Todas las políticas RLS avanzadas han sido configuradas y verificadas');

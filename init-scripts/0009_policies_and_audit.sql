@@ -4,7 +4,7 @@
 BEGIN;
 
 -- 1. Audit Trail Table
-CREATE TABLE IF NOT EXISTS audit_log (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     action VARCHAR(50) NOT NULL,
@@ -26,15 +26,15 @@ BEGIN
     user_id_var := NULL;
 
     IF (TG_OP = 'INSERT') THEN
-        INSERT INTO audit_log (user_id, action, table_name, record_id, new_data)
+INSERT INTO audit_logs (user_id, action, table_name, record_id, new_data)
         VALUES (user_id_var, 'INSERT', TG_TABLE_NAME, NEW.id, to_jsonb(NEW));
         RETURN NEW;
     ELSIF (TG_OP = 'UPDATE') THEN
-        INSERT INTO audit_log (user_id, action, table_name, record_id, old_data, new_data)
+INSERT INTO audit_logs (user_id, action, table_name, record_id, old_data, new_data)
         VALUES (user_id_var, 'UPDATE', TG_TABLE_NAME, NEW.id, to_jsonb(OLD), to_jsonb(NEW));
         RETURN NEW;
     ELSIF (TG_OP = 'DELETE') THEN
-        INSERT INTO audit_log (user_id, action, table_name, record_id, old_data)
+INSERT INTO audit_logs (user_id, action, table_name, record_id, old_data)
         VALUES (user_id_var, 'DELETE', TG_TABLE_NAME, OLD.id, to_jsonb(OLD));
         RETURN OLD;
     END IF;

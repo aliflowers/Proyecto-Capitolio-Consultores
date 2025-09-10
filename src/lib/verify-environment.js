@@ -15,10 +15,9 @@ async function verifyEnvironment() {
     
     // Verificar tablas principales
     console.log('2. Verificando estructura de base de datos...');
-    const tables = [
+const tables = [
       'users', 'profiles', 'documentos', 'document_chunks', 
-      'casos', 'clientes', 'casos_clientes', 'casos_documentos',
-      'storage_buckets', 'storage_objects'
+      'expedientes', 'clientes', 'expedientes_clientes', 'expedientes_documentos'
     ];
     
     for (const table of tables) {

@@ -224,9 +224,9 @@ async function runMigrations() {
 async function verifyDatabaseStructure() {
   logStep(5, 'Verificando estructura de base de datos final...');
   
-  const requiredTables = [
+const requiredTables = [
     'users', 'profiles', 'documentos', 'document_chunks', 'expedientes',
-    'clientes', 'expedientes_clientes', 'expedientes_documentos', 'storage_buckets', 'storage_objects'
+    'clientes', 'expedientes_clientes', 'expedientes_documentos'
   ];
   
   try {

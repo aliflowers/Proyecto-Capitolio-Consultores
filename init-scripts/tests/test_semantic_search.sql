@@ -24,9 +24,9 @@ BEGIN
   RETURNING id INTO doc_id;
 
   -- Insert a matching chunk using dynamic SQL to cast text to vector
-EXECUTE 'INSERT INTO document_chunks (id, document_id, user_id, content, embedding)
-           VALUES (gen_random_uuid(), $1, $2, ''TEST_CHUNK_SIMILARITY_1'', ' || quote_literal(v_text) || '::vector)'
-  USING doc_id, u_id;
+EXECUTE 'INSERT INTO document_chunks (id, document_id, content, embedding)
+           VALUES (gen_random_uuid(), $1, ''TEST_CHUNK_SIMILARITY_1'', ' || quote_literal(v_text) || '::vector)'
+  USING doc_id;
 END $$;
 
 -- 2) Query for matches using the same vector and a high threshold
