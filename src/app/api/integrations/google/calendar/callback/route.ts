@@ -26,7 +26,7 @@ export async function GET(req: Request) {
     const { tokens } = await client.getToken(code);
     await query(
       `INSERT INTO oauth_tokens (user_id, provider, service, access_token, refresh_token, expiry_date, scope, token_type, updated_at)
-       VALUES ($1,'google','calendar',$2,$3,TO_TIMESTAMP($4/1000),$5,$6,NOW())
+       VALUES ($1,'google','calendar',$2,$3,TO_TIMESTAMP(($4)::double precision/1000.0),$5,$6,NOW())
        ON CONFLICT (user_id, provider, service)
        DO UPDATE SET access_token = EXCLUDED.access_token,
                      refresh_token = COALESCE(EXCLUDED.refresh_token, oauth_tokens.refresh_token),
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
         user.id,
         tokens.access_token || null,
         tokens.refresh_token || null,
-        tokens.expiry_date || 0,
+        (typeof tokens.expiry_date === 'number' ? tokens.expiry_date : Date.now() + 50 * 60 * 1000),
         tokens.scope || null,
         tokens.token_type || null,
       ]
