@@ -12,7 +12,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     const { id } = params;
     const body = await req.json();
-    const { title, description, location, start, end, allDay } = body || {};
+    const { title, description, location, start, end, allDay, color } = body || {};
     if (!title || !start || !end) {
       return NextResponse.json({ success: false, error: 'Faltan campos obligatorios' }, { status: 400 });
     }
@@ -25,10 +25,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
            start_at = $4,
            end_at = $5,
            all_day = $6,
+           color = $7,
            updated_at = NOW()
-       WHERE id = $7 AND user_id = $8
-       RETURNING id, title, start_at, end_at, all_day, description, location, calendar_id`,
-      [title, description || null, location || null, new Date(start).toISOString(), new Date(end).toISOString(), !!allDay, id, user.id]
+       WHERE id = $8 AND user_id = $9
+       RETURNING id, title, start_at, end_at, all_day, description, location, calendar_id, color`,
+      [title, description || null, location || null, new Date(start).toISOString(), new Date(end).toISOString(), !!allDay, color || '#222052', id, user.id]
     );
 
     if (result.rowCount === 0) return NextResponse.json({ success: false, error: 'Evento no encontrado' }, { status: 404 });
@@ -36,7 +37,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const r = result.rows[0];
     return NextResponse.json({ success: true, event: {
       id: r.id, title: r.title, start: r.start_at, end: r.end_at, allDay: r.all_day,
-      description: r.description, location: r.location, calendarId: r.calendar_id
+      description: r.description, location: r.location, calendarId: r.calendar_id, color: r.color
     }});
   } catch (err: any) {
     console.error('PUT /api/calendar/events/[id] error:', err);

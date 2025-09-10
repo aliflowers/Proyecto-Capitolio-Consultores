@@ -15,6 +15,7 @@ interface EventItem {
   allDay?: boolean
   description?: string
   location?: string
+  color?: string
 }
 
 const locales = { es }
@@ -89,6 +90,7 @@ export default function CalendarioPage() {
       start: new Date(e.start).toISOString(),
       end: new Date(e.end).toISOString(),
       allDay: !!e.allDay,
+      color: e.color || '#222052',
     }
     if (!e.title || !e.start || !e.end) {
       alert('Título, inicio y fin son obligatorios')
@@ -124,14 +126,15 @@ export default function CalendarioPage() {
     fetchEvents({ start, end })
   }
 
-  function eventStyleGetter() {
+function eventStyleGetter(event?: any) {
     return {
       style: {
-        backgroundColor: '#222052', // primary
+        backgroundColor: 'transparent', // dejamos el contenedor sin color
         borderRadius: '6px',
-        color: '#fff',
+        color: '#111827',
         border: 'none',
-        display: 'block'
+        display: 'block',
+        padding: 0,
       }
     }
   }
@@ -158,6 +161,20 @@ export default function CalendarioPage() {
           onSelectSlot={(slot) => openCreate(slot as any)}
           onSelectEvent={(event) => openEdit(event as EventItem)}
           eventPropGetter={eventStyleGetter}
+          components={{
+            event: ({ event }) => (
+              <div style={{ backgroundColor: (event as any).color || '#222052', color: '#fff', padding: '2px 6px', borderRadius: 4 }}>
+                {(event as any).title}
+              </div>
+            ),
+            agenda: {
+              event: ({ event }) => (
+                <div style={{ backgroundColor: (event as any).color || '#222052', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>
+                  {(event as any).title}
+                </div>
+              )
+            }
+          }}
           messages={{
             next: 'Sig',
             previous: 'Ant',
@@ -241,6 +258,10 @@ function EventForm({ value, onChange, onSave, onDelete }: {
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
         <input className="w-full border rounded px-3 py-2" value={value.location || ''} onChange={(e) => set('location', e.target.value)} />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Color del evento</label>
+        <input type="color" className="w-16 h-10 p-0 border rounded" value={value.color || '#222052'} onChange={(e) => set('color', e.target.value)} />
       </div>
       <div className="flex justify-end space-x-2 pt-2">
         {onDelete && (
