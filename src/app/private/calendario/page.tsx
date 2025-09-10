@@ -300,10 +300,10 @@ function EventForm({ value, onChange, onSave, onDelete }: {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Color del evento</label>
-        <div className="grid grid-cols-8 gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {['#222052','#FFDE59','#e74c3c','#16a34a','#2563eb','#0891b2','#9333ea','#f97316','#dc2626','#059669','#0ea5e9','#64748b','#111827','#f59e0b','#9d174d'].map(c => (
             <button type="button" key={c} title={c}
-              className={`h-8 w-8 rounded ${value.color===c?'ring-2 ring-offset-2 ring-primary':''}`}
+              className={`h-6 w-6 rounded ${value.color===c?'ring-2 ring-offset-1 ring-primary':''}`}
               style={{ backgroundColor: c }}
               onClick={() => set('color', c)}
             />
