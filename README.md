@@ -61,21 +61,19 @@ DB_PASSWORD=nexus_password_segura_2025
 
 ## 🗄️ **ESTRUCTURA DE BASE DE DATOS LOCAL**
 
-### **Tablas Principales Creadas (14):**
+### **Tablas principales:**
 1. `users` - Gestión de usuarios y autenticación
 2. `profiles` - Perfiles de usuarios con roles
 3. `documentos` - Metadatos de documentos
 4. `document_chunks` - Fragmentos de texto para búsqueda semántica
-5. `casos` - Expedientes digitales
+5. `expedientes` - Expedientes digitales
 6. `clientes` - Base de datos de clientes
-7. `casos_clientes` - Relación muchos a muchos entre casos y clientes
-8. `casos_documentos` - Relación muchos a muchos entre casos y documentos
-9. `storage_buckets` - Simulación de buckets de almacenamiento
-10. `storage_objects` - Simulación de objetos almacenados
-11. `sessions` - Sesiones tradicionales para autenticación web
-12. `user_permissions` - Permisos individuales por usuario
-13. `user_roles` - Asignación de roles a usuarios
-14. `roles` - Roles predefinidos con permisos granulares
+7. `expedientes_clientes` - Relación muchos a muchos entre expedientes y clientes
+8. `expedientes_documentos` - Relación muchos a muchos entre expedientes y documentos
+9. `sessions` - Sesiones tradicionales para autenticación web
+10. `user_permissions` - Permisos individuales por usuario
+11. `user_roles` - Asignación de roles a usuarios
+12. `roles` - Roles predefinidos con permisos granulares
 
 ---
 
@@ -147,11 +145,14 @@ capitolio-consultores/
 ├── init-scripts/                  # Scripts de inicialización PostgreSQL
 │   ├── 0000_install_vector_extension.sql
 │   ├── 0001_enable_extensions.sql
-│   ├── 0001_create_auth_tables.sql
-│   ├── 0002_create_documents_table.sql
-│   ├── 0003_intelligent_search_and_cases.sql
-│   ├── 0004_document_processing_trigger.sql
-│   └── 0005_semantic_search_function.sql
+│   ├── 0002_create_auth_tables.sql
+│   ├── 0003_create_core_tables.sql
+│   ├── 0004_create_expedientes_and_chunks.sql
+│   ├── 0005_document_processing_trigger.sql
+│   ├── 0006_semantic_search_function.sql
+│   ├── 0007_create_roles_and_permissions.sql
+│   ├── 0008_initialize_dev_environment.sql
+│   └── 0009_policies_and_audit.sql
 ├── scripts/                       # Scripts de gestión
 │   ├── quick-start.js            # Inicialización rápida
 │   ├── init-local-db.js          # Configuración automática
@@ -179,7 +180,7 @@ capitolio-consultores/
 
 ### **Fase 2: Desarrollo de APIs CRUD Básicas**
 1. **Desarrollar APIs REST protegidas** para gestión de usuarios
-2. **Implementar endpoints CRUD** para casos, clientes y documentos
+2. **Implementar endpoints CRUD** para expedientes, clientes y documentos
 3. **Crear middleware de autenticación** para proteger rutas
 4. **Desarrollar sistema de validación** de datos de entrada
 
@@ -428,6 +429,6 @@ Troubleshooting rápido
 - ✅ **Sistema de seguridad avanzado** implementado (autenticación, autorización, rate limiting, auditoría)
 
 ### **Próximo Paso:**
-Comenzar el desarrollo de las **APIs REST protegidas** para gestión de casos, clientes y documentos, integrando la autenticación y autorización implementadas.
+Comenzar el desarrollo de las **APIs REST protegidas** para gestión de expedientes, clientes y documentos, integrando la autenticación y autorización implementadas.
 
 **El proyecto Nexus Jurídico está listo para entrar en la fase de desarrollo activo de funcionalidades.** 🚀

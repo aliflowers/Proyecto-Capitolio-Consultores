@@ -1,3 +1,5 @@
+> Nota de terminología (2025-09-10): En toda la documentación, el término "casos" se unifica como "expedientes". Las tablas `casos`, `casos_clientes`, `casos_documentos` pasan a ser `expedientes`, `expedientes_clientes`, `expedientes_documentos`. La tabla de auditoría vigente es `audit_logs` (antes `audit_log`).
+
 # 📊 RESUMEN PARCIAL - FASE 3: SISTEMA DE PERMISOS AVANZADO
 
 **Fecha:** 28 de agosto de 2025  
