@@ -55,8 +55,20 @@ async function main() {
     // Verificar que Docker Desktop esté corriendo
     log('🔄 Verificando que Docker Desktop esté corriendo...', 'info');
     try {
-      const dockerInfo = executeCommand('docker info', { stdio: 'pipe' });
-      if (dockerInfo.includes('Server:') && dockerInfo.includes('running')) {
+      const dockerInfo = executeCommand('docker info', { stdio: 'pipe' }) || '';
+      const infoLower = dockerInfo.toLowerCase();
+      let isRunning = false;
+      // Señales típicas en Windows/Linux que indican conexión con el daemon
+      if (infoLower.includes('server version') || infoLower.includes('operating system') || infoLower.includes('server:')) {
+        isRunning = true;
+      }
+      // Fallback: si docker ps funciona, asumimos que el daemon responde
+      if (!isRunning) {
+        executeCommand('docker ps -a --format "{{.ID}}"', { stdio: 'pipe' });
+        isRunning = true;
+      }
+
+      if (isRunning) {
         log('✅ Docker Desktop está corriendo correctamente', 'success');
       } else {
         log('⚠️  Docker Desktop puede no estar corriendo', 'warning');
