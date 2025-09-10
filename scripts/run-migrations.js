@@ -97,7 +97,8 @@ async function checkDocker() {
     logSuccess(`Docker instalado: ${dockerVersion}`);
     
     const dockerInfo = executeCommand('docker info', { stdio: 'pipe' });
-    if (dockerInfo.includes('Server:') && dockerInfo.includes('running')) {
+    const infoLower = (dockerInfo || '').toLowerCase();
+    if (infoLower.includes('server:') && infoLower.includes('running')) {
       logSuccess('Docker Desktop está corriendo correctamente');
       return true;
     } else {
@@ -224,8 +225,8 @@ async function verifyDatabaseStructure() {
   logStep(5, 'Verificando estructura de base de datos final...');
   
   const requiredTables = [
-    'users', 'profiles', 'documentos', 'document_chunks', 'casos',
-    'clientes', 'casos_clientes', 'casos_documentos', 'storage_buckets', 'storage_objects'
+    'users', 'profiles', 'documentos', 'document_chunks', 'expedientes',
+    'clientes', 'expedientes_clientes', 'expedientes_documentos', 'storage_buckets', 'storage_objects'
   ];
   
   try {
