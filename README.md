@@ -383,6 +383,37 @@ AND created_at >= NOW() - INTERVAL '24 hours'
 ORDER BY created_at DESC;
 ```
 
+## 🔧 Recuperación de contraseña en desarrollo
+
+Existen dos métodos soportados para restablecer contraseñas en el entorno de desarrollo.
+
+a) API: POST /api/dev/reset-password
+- Cuerpo JSON: { "email": "usuario@example.com", "newPassword": "nueva123", "token": "DEVONLY" }
+- El token se valida con la variable de entorno DEV_RESET_TOKEN (por defecto, "DEVONLY").
+
+Ejemplo (curl):
+```bash
+curl -i -X POST http://localhost:3000/api/dev/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"aliflores@capitolioconsultores.com","newPassword":"NuevaClave123","token":"DEVONLY"}'
+```
+
+b) Script: node scripts/set-admin-password.js EMAIL NEW_PASSWORD
+- Requiere .env.development con las variables de conexión a la BD.
+- El script genera el hash de la contraseña automáticamente o la BD lo hace (según el flujo).
+
+Ejemplo:
+```bash
+node scripts/set-admin-password.js aliflores@capitolioconsultores.com NuevaClave123
+```
+
+Troubleshooting rápido
+- Asegúrate de que Docker y PostgreSQL estén ejecutándose (usa `npm run dev` que ya verifica Docker, o revisa `docker-compose ps`).
+- Si la API devuelve "Token inválido", verifica la variable DEV_RESET_TOKEN.
+- Confirma que `.env.development` contenga credenciales correctas para conectar a la base de datos.
+
+---
+
 ## 🎉 **CONCLUSIÓN**
 
 **¡El entorno de desarrollo local está completamente funcional y listo para usar!** 🚀

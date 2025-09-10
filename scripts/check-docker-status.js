@@ -36,6 +36,12 @@ function executeCommand(command, options = {}) {
 
 async function main() {
   try {
+    // Permitir omitir la verificación si se establece la variable de entorno
+    if ((process.env.SKIP_DOCKER_CHECK || '').toLowerCase() === 'true' || process.env.SKIP_DOCKER_CHECK === '1') {
+      log('⏭️  SKIP_DOCKER_CHECK activo: omitiendo verificación de Docker.', 'warning')
+      return
+    }
+
     log('🔍 Verificando estado de Docker...', 'info');
     
     // Verificar versión de Docker

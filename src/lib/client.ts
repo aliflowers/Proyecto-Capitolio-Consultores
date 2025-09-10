@@ -12,28 +12,23 @@ export function createClient() {
       auth: {
         signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
           try {
-            // Verificar credenciales contra la base de datos local
-            const response = await fetch('/api/auth/login', {
+            const res = await fetch('/api/auth/login', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email, password }),
             });
-            
-            const result = await response.json();
-            
-            if (response.ok && result.success) {
-              // Guardar sesión en localStorage para desarrollo
-              localStorage.setItem('local_auth_token', result.token);
-              localStorage.setItem('local_user_email', email);
-              localStorage.setItem('local_user_id', result.user.id);
-              return { data: { user: result.user }, error: null };
-            } else {
-              return { data: null, error: { message: result.error || 'Credenciales inválidas' } };
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok || !body?.success) {
+              const err = { message: body?.error || 'Credenciales inválidas' };
+              return { data: null, error: err, status: res.status };
             }
+            // Guardar sesión en localStorage para desarrollo
+            localStorage.setItem('local_auth_token', body.token);
+            localStorage.setItem('local_user_email', email);
+            localStorage.setItem('local_user_id', body.user.id);
+            return { data: { user: body.user }, error: null, status: res.status };
           } catch (error) {
-            return { data: null, error: { message: 'Error en la autenticación' } };
+            return { data: null, error: { message: 'Error en la autenticación' }, status: 0 };
           }
         },
         signOut: async () => {

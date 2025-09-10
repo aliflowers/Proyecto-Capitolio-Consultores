@@ -1,39 +1,69 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/client'
 import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
+  const client = createClient()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const supabase = createClient()
+  const [busy, setBusy] = useState(false)
+  const [dbUp, setDbUp] = useState<boolean | null>(null)
+  const [banner, setBanner] = useState<string | null>(null)
+
+  async function checkHealth() {
+    try {
+      const res = await fetch('/api/health', { cache: 'no-store' })
+      const json = await res.json().catch(() => null)
+      const up = json?.db === 'up'
+      setDbUp(up)
+      setBanner(up ? null : 'Base de datos no disponible. Verifica Docker y Postgres.')
+      return up
+    } catch {
+      setDbUp(false)
+      setBanner('Base de datos no disponible. Verifica Docker y Postgres.')
+      return false
+    }
+  }
+
+  useEffect(() => {
+    checkHealth()
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setLoading(true)
+    setBusy(true)
+
+    const up = await checkHealth()
+    if (!up) {
+      setError('Servicio no disponible. Verifica Docker y Postgres.')
+      setBusy(false)
+      return
+    }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const result: any = await client.auth.signInWithPassword({ email, password })
+      const status = typeof result?.status === 'number' ? result.status : (result?.error?.status ?? (result?.error ? 500 : 200))
 
-      if (error) {
-        setError(error.message)
-      } else {
-        router.push('/private')
-        router.refresh()
+      if (result?.error) {
+        if (status === 401) setError('Credenciales inválidas')
+        else setError('Servicio no disponible')
+        setBusy(false)
+        return
       }
+
+      router.push('/private')
+      router.refresh()
     } catch (err) {
-      setError('Error en la autenticación')
+      setError('Servicio no disponible')
     } finally {
-      setLoading(false)
+      setBusy(false)
     }
   }
 
@@ -48,6 +78,11 @@ export default function LoginPage() {
                 <h3 className="text-2xl font-bold">Acceso a Nexus Jurídico</h3>
                 <p className="text-gray-600">Ingrese sus credenciales para acceder al área privada</p>
               </div>
+              {banner && (
+                <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-700 p-3">
+                  {banner}
+                </div>
+              )}
               <form onSubmit={handleLogin}>
                 <div className="mb-4">
                   <label htmlFor="emailLogin" className="block text-gray-700 text-sm font-bold mb-2">Correo Electrónico</label>
@@ -80,10 +115,10 @@ export default function LoginPage() {
                 {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
                 <button 
                   type="submit" 
-                  className="bg-primary hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full mb-4"
-                  disabled={loading}
+                  className="bg-primary hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full mb-4 disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={busy || dbUp === false}
                 >
-                  {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+                  {busy ? 'Iniciando sesión...' : 'Iniciar Sesión'}
                 </button>
                 <div className="text-center">
                   <Link href="#" className="text-primary hover:underline">¿Olvidó su contraseña?</Link>
