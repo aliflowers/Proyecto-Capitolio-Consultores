@@ -18,6 +18,40 @@ interface EventItem {
   color?: string
 }
 
+function ReminderEditor({ value, onChange }: { value?: number[]; onChange: (v: number[]) => void }) {
+  const presets = [5,10,15,30,60,120, 24*60];
+  const v = Array.isArray(value) ? value : [];
+  function toggle(mins: number) {
+    if (v.includes(mins)) onChange(v.filter(x => x!==mins)); else onChange([...v, mins]);
+  }
+  const [custom, setCustom] = useState('');
+  function addCustom() {
+    const mins = parseInt(custom, 10);
+    if (!isNaN(mins) && mins>0 && mins<=60*24*365) {
+      if (!v.includes(mins)) onChange([...v, mins]);
+      setCustom('');
+    }
+  }
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {presets.map(m => (
+          <button type="button" key={m}
+            className={`px-2 py-1 rounded border text-sm ${v.includes(m)?'bg-primary text-white border-primary':'bg-white hover:bg-gray-50'}`}
+            onClick={()=>toggle(m)}>
+            {m>=60 ? (m%60===0 ? `${m/60} h` : `${Math.floor(m/60)}h ${m%60}m`) : `${m} m`}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <input type="number" min={1} max={525600} placeholder="Minutos" value={custom} onChange={(e)=>setCustom(e.target.value)} className="w-28 border rounded px-2 py-1 text-sm" />
+        <button type="button" className="px-2 py-1 rounded bg-primary text-white text-sm" onClick={addCustom}>Agregar</button>
+        {v.length>0 && <span className="text-sm text-gray-600">Seleccionados: {v.sort((a,b)=>a-b).map(m => m>=60 ? (m%60===0?`${m/60} h`:`${Math.floor(m/60)}h ${m%60}m`) : `${m} m`).join(', ')}</span>}
+      </div>
+    </div>
+  )
+}
+
 const locales = { es }
 const localizer = dateFnsLocalizer({
   format,
@@ -34,6 +68,11 @@ export default function CalendarioPage() {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<EventItem | null>(null)
+
+  const PALETTE = [
+    '#222052', '#FFDE59', '#e74c3c', '#16a34a', '#2563eb', '#0891b2', '#9333ea', '#f97316', '#dc2626', '#059669',
+    '#0ea5e9', '#64748b', '#111827', '#f59e0b', '#9d174d'
+  ]
 
   const defaultDate = useMemo(() => new Date(), [])
 
@@ -261,7 +300,19 @@ function EventForm({ value, onChange, onSave, onDelete }: {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Color del evento</label>
-        <input type="color" className="w-16 h-10 p-0 border rounded" value={value.color || '#222052'} onChange={(e) => set('color', e.target.value)} />
+        <div className="grid grid-cols-8 gap-2">
+          {['#222052','#FFDE59','#e74c3c','#16a34a','#2563eb','#0891b2','#9333ea','#f97316','#dc2626','#059669','#0ea5e9','#64748b','#111827','#f59e0b','#9d174d'].map(c => (
+            <button type="button" key={c} title={c}
+              className={`h-8 w-8 rounded ${value.color===c?'ring-2 ring-offset-2 ring-primary':''}`}
+              style={{ backgroundColor: c }}
+              onClick={() => set('color', c)}
+            />
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Alertas (recordatorios)</label>
+        <ReminderEditor value={(value as any).reminders as number[] | undefined} onChange={(r)=> onChange({ ...value, reminders: r } as any)} />
       </div>
       <div className="flex justify-end space-x-2 pt-2">
         {onDelete && (
