@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.redirect(new URL('/login', process.env.APP_BASE_URL));
+  if (!user) return NextResponse.redirect(new URL('/login', req.url));
 
   const url = new URL(req.url);
   const code = url.searchParams.get('code');
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const stateCookie = cookieStore.get('google_oauth_state')?.value;
 
   if (!code || !state || !stateCookie || state !== stateCookie) {
-    return NextResponse.redirect(new URL('/private/calendario?error=oauth_state', process.env.APP_BASE_URL));
+    return NextResponse.redirect(new URL('/private/calendario?error=oauth_state', req.url));
   }
 
   try {
@@ -45,8 +45,8 @@ export async function GET(req: Request) {
     );
 
     cookieStore.delete('google_oauth_state');
-    return NextResponse.redirect(new URL('/private/calendario?connected=google', process.env.APP_BASE_URL));
+    return NextResponse.redirect(new URL('/private/calendario?connected=google', req.url));
   } catch (e) {
-    return NextResponse.redirect(new URL('/private/calendario?error=oauth_exchange', process.env.APP_BASE_URL));
+    return NextResponse.redirect(new URL('/private/calendario?error=oauth_exchange', req.url));
   }
 }
