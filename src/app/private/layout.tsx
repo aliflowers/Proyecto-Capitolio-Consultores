@@ -38,6 +38,7 @@ export default async function PrivateLayout({
             <Link href="/private/expedientes" className="text-light hover:bg-blue-900 p-2 rounded-md">Expedientes</Link>
             <Link href="/private/clientes" className="text-light hover:bg-blue-900 p-2 rounded-md">Clientes</Link>
             <Link href="/private/asistente" className="text-light hover:bg-blue-900 p-2 rounded-md">Asistente IA</Link>
+            <Link href="/private/calendario" className="text-light hover:bg-blue-900 p-2 rounded-md">Calendario</Link>
             {/* Solo mostrar administración a super admins */}
             {user.is_super_admin && (
               <div className="mt-4 pt-4 border-t border-blue-800">
