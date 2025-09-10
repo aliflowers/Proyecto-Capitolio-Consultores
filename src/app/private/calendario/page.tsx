@@ -69,6 +69,20 @@ export default function CalendarioPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<EventItem | null>(null)
 
+  // Estado de conexión con Google Calendar
+  const [googleConnected, setGoogleConnected] = useState<boolean>(false)
+  async function refreshGoogleStatus() {
+    try {
+      const res = await fetch('/api/integrations/google/calendar/status', { cache: 'no-store' })
+      const data = await res.json();
+      setGoogleConnected(!!data.connected)
+    } catch {}
+  }
+
+  useEffect(() => {
+    refreshGoogleStatus()
+  }, [])
+
   const PALETTE = [
     '#222052', '#FFDE59', '#e74c3c', '#16a34a', '#2563eb', '#0891b2', '#9333ea', '#f97316', '#dc2626', '#059669',
     '#0ea5e9', '#64748b', '#111827', '#f59e0b', '#9d174d'
@@ -181,6 +195,20 @@ function eventStyleGetter(event?: any) {
   return (
     <div className="w-full">
       <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Calendario</h1>
+
+      <div className="mb-4 flex items-center justify-between bg-white rounded border p-3">
+        <div className="text-sm">
+          <span className="font-semibold">Google Calendar: </span>
+          {googleConnected ? <span className="text-green-700">Conectado</span> : <span className="text-gray-600">No conectado</span>}
+        </div>
+        <div className="flex gap-2">
+          {!googleConnected ? (
+            <a href="/api/integrations/google/calendar/connect" className="px-3 py-1.5 rounded bg-primary text-white hover:bg-blue-900 text-sm">Conectar</a>
+          ) : (
+            <button onClick={async()=>{await fetch('/api/integrations/google/calendar/disconnect',{method:'POST'}); refreshGoogleStatus();}} className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 text-sm">Desconectar</button>
+          )}
+        </div>
+      </div>
 
       {error && (
         <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-700 p-3">{error}</div>
