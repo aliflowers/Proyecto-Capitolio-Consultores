@@ -71,6 +71,12 @@ export default function CalendarioPage() {
 
   // Estado de conexión con Google Calendar
   const [googleConnected, setGoogleConnected] = useState<boolean>(false)
+  const [googleCalendars, setGoogleCalendars] = useState<any[]>([])
+  const [googleSelectedId, setGoogleSelectedId] = useState<string | null>(null)
+  const [googleSelectedName, setGoogleSelectedName] = useState<string | null>(null)
+  const [showSelectModal, setShowSelectModal] = useState(false)
+  const [showSelectButton, setShowSelectButton] = useState(false)
+
   async function refreshGoogleStatus() {
     try {
       const res = await fetch('/api/integrations/google/calendar/status', { cache: 'no-store' })
@@ -79,9 +85,68 @@ export default function CalendarioPage() {
     } catch {}
   }
 
+  async function selectGoogleCalendar(calendarId: string) {
+    const res = await fetch('/api/integrations/google/calendar/select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ calendarId })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data.success) {
+      alert(data?.error || 'No se pudo seleccionar el calendario')
+      return
+    }
+    setGoogleSelectedId(calendarId)
+    setGoogleSelectedName(data?.selected?.summary || 'Calendario Google')
+  }
+
+  async function loadGoogleCalendars() {
+    if (!googleConnected) return
+    try {
+      const res = await fetch('/api/integrations/google/calendar/calendars', { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data?.error || 'Error al listar calendarios')
+
+      const items = Array.isArray(data.calendars) ? data.calendars : []
+      setGoogleCalendars(items)
+
+      const selected: string | null = data.selected || null
+      setGoogleSelectedId(selected)
+
+      const writeable = items.filter((c: any) => c.accessRole === 'owner' || c.accessRole === 'writer')
+
+      if (selected) {
+        const sel = items.find((c: any) => c.id === selected)
+        setGoogleSelectedName(sel?.summary || (sel?.primary ? 'Primary' : 'Calendario'))
+        setShowSelectButton(writeable.length > 1)
+      } else {
+        if (writeable.length === 1) {
+          // Autoselección cuando solo hay un calendario con permiso de escritura
+          await selectGoogleCalendar(writeable[0].id)
+          setShowSelectButton(false)
+        } else {
+          setShowSelectButton(writeable.length > 1)
+        }
+      }
+    } catch (e) {
+      // Silencioso, mantenemos el estado actual
+    }
+  }
+
   useEffect(() => {
     refreshGoogleStatus()
   }, [])
+
+  useEffect(() => {
+    if (googleConnected) {
+      loadGoogleCalendars()
+    } else {
+      setGoogleCalendars([])
+      setGoogleSelectedId(null)
+      setGoogleSelectedName(null)
+      setShowSelectButton(false)
+    }
+  }, [googleConnected])
 
   const PALETTE = [
     '#222052', '#FFDE59', '#e74c3c', '#16a34a', '#2563eb', '#0891b2', '#9333ea', '#f97316', '#dc2626', '#059669',
@@ -202,13 +267,27 @@ function eventStyleGetter(event?: any) {
             <GoogleCalendarIcon />
             <span className="font-semibold">Google Calendar:</span>
           </span>
-          {googleConnected ? <span className="text-green-700">Conectado</span> : <span className="text-gray-600">No conectado</span>}
+          {googleConnected ? (
+            <>
+              <span className="text-green-700">Conectado</span>
+              {googleSelectedName && (
+                <span className="text-gray-700">— Calendario: <span className="font-medium">{googleSelectedName}</span></span>
+              )}
+            </>
+          ) : (
+            <span className="text-gray-600">No conectado</span>
+          )}
         </div>
         <div className="flex gap-2">
           {!googleConnected ? (
             <a href="/api/integrations/google/calendar/connect" className="px-3 py-1.5 rounded bg-primary text-white hover:bg-blue-900 text-sm">Conectar</a>
           ) : (
-            <button onClick={async()=>{await fetch('/api/integrations/google/calendar/disconnect',{method:'POST'}); refreshGoogleStatus();}} className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 text-sm">Desconectar</button>
+            <>
+              {showSelectButton && (
+                <button onClick={()=> setShowSelectModal(true)} className="px-3 py-1.5 rounded border text-sm hover:bg-gray-50">Seleccionar calendario</button>
+              )}
+              <button onClick={async()=>{await fetch('/api/integrations/google/calendar/disconnect',{method:'POST'}); refreshGoogleStatus();}} className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 text-sm">Desconectar</button>
+            </>
           )}
         </div>
       </div>
@@ -270,6 +349,17 @@ function eventStyleGetter(event?: any) {
           />
         </Modal>
       )}
+
+      {showSelectModal && (
+        <Modal onClose={() => setShowSelectModal(false)}>
+          <CalendarSelectForm
+            calendars={googleCalendars}
+            selectedId={googleSelectedId}
+            onCancel={() => setShowSelectModal(false)}
+            onConfirm={async (id) => { await selectGoogleCalendar(id); setShowSelectModal(false); }}
+          />
+        </Modal>
+      )}
     </div>
   )
 }
@@ -298,6 +388,43 @@ function GoogleCalendarIcon() {
       <rect x="3" y="9" width="18" height="3" fill="#0F9D58"/>
       <text x="12" y="17" textAnchor="middle" fontSize="9" fontFamily="Arial, Helvetica, sans-serif" fill="#ffffff">31</text>
     </svg>
+  )
+}
+
+function CalendarSelectForm({ calendars, selectedId, onCancel, onConfirm }: {
+  calendars: Array<{ id: string; summary: string; timeZone?: string; primary?: boolean; accessRole: string }>;
+  selectedId: string | null;
+  onCancel: () => void;
+  onConfirm: (id: string) => void;
+}) {
+  const [current, setCurrent] = useState<string | null>(selectedId)
+  const writeable = (calendars || []).filter(c => c.accessRole === 'owner' || c.accessRole === 'writer')
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm text-gray-600 mb-2">Selecciona el calendario de Google donde se crearán/editarán los eventos.</p>
+        {writeable.length === 0 ? (
+          <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">No tienes calendarios con permiso de escritura.</div>
+        ) : (
+          <div className="max-h-64 overflow-auto border rounded divide-y">
+            {writeable.map((c) => (
+              <label key={c.id} className="flex items-center gap-3 p-2 cursor-pointer hover:bg-gray-50">
+                <input type="radio" name="gcal" checked={current===c.id} onChange={()=> setCurrent(c.id)} />
+                <div className="flex flex-col">
+                  <span className="font-medium">{c.summary || (c.primary ? 'Primary' : c.id)}</span>
+                  <span className="text-xs text-gray-600">{c.timeZone || 'UTC'} • {c.accessRole}{c.primary ? ' • principal' : ''}</span>
+                </div>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="flex justify-end gap-2">
+        <button className="px-3 py-1.5 rounded border hover:bg-gray-50" onClick={onCancel}>Cancelar</button>
+        <button className="px-3 py-1.5 rounded bg-primary text-white hover:bg-blue-900 disabled:opacity-50" disabled={!current} onClick={()=> current && onConfirm(current)}>Guardar</button>
+      </div>
+    </div>
   )
 }
 
