@@ -77,6 +77,10 @@ export default function CalendarioPage() {
   const [showSelectModal, setShowSelectModal] = useState(false)
   const [showSelectButton, setShowSelectButton] = useState(false)
 
+  // Sync manual e intervalo actual
+  const [syncing, setSyncing] = useState(false)
+  const [currentRange, setCurrentRange] = useState<{ start: Date; end: Date } | null>(null)
+
   async function refreshGoogleStatus() {
     try {
       const res = await fetch('/api/integrations/google/calendar/status', { cache: 'no-store' })
@@ -148,6 +152,20 @@ export default function CalendarioPage() {
     }
   }, [googleConnected])
 
+  async function refreshNow() {
+    if (!googleConnected) return
+    try {
+      setSyncing(true)
+      const res = await fetch('/api/integrations/google/calendar/sync', { method: 'POST' })
+      // No es crítico leer el body, basta con disparar la sync y luego refrescar eventos
+    } catch {}
+    finally {
+      setSyncing(false)
+      const range = currentRange || (() => { const s = new Date(); s.setDate(1); s.setHours(0,0,0,0); const e = new Date(s); e.setMonth(e.getMonth()+2); e.setHours(23,59,59,999); return { start: s, end: e } })()
+      fetchEvents(range)
+    }
+  }
+
   const PALETTE = [
     '#222052', '#FFDE59', '#e74c3c', '#16a34a', '#2563eb', '#0891b2', '#9333ea', '#f97316', '#dc2626', '#059669',
     '#0ea5e9', '#64748b', '#111827', '#f59e0b', '#9d174d'
@@ -156,6 +174,7 @@ export default function CalendarioPage() {
   const defaultDate = useMemo(() => new Date(), [])
 
   async function fetchEvents(range: { start: Date; end: Date }) {
+    setCurrentRange(range)
     setLoading(true)
     setError(null)
     try {
@@ -286,6 +305,7 @@ function eventStyleGetter(event?: any) {
               {showSelectButton && (
                 <button onClick={()=> setShowSelectModal(true)} className="px-3 py-1.5 rounded border text-sm hover:bg-gray-50">Seleccionar calendario</button>
               )}
+              <button onClick={refreshNow} disabled={syncing} className="px-3 py-1.5 rounded border text-sm hover:bg-gray-50 disabled:opacity-50">{syncing ? 'Refrescando…' : 'Refrescar ahora'}</button>
               <button onClick={async()=>{await fetch('/api/integrations/google/calendar/disconnect',{method:'POST'}); refreshGoogleStatus();}} className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 text-sm">Desconectar</button>
             </>
           )}
