@@ -76,6 +76,7 @@ export default function CalendarioPage() {
   const [googleSelectedName, setGoogleSelectedName] = useState<string | null>(null)
   const [showSelectModal, setShowSelectModal] = useState(false)
   const [showSelectButton, setShowSelectButton] = useState(false)
+  const [googleLastSyncAt, setGoogleLastSyncAt] = useState<string | null>(null)
 
   // Sync manual e intervalo actual
   const [syncing, setSyncing] = useState(false)
@@ -102,6 +103,8 @@ export default function CalendarioPage() {
     }
     setGoogleSelectedId(calendarId)
     setGoogleSelectedName(data?.selected?.summary || 'Calendario Google')
+    // Vuelve a cargar info para traer lastSyncAt actualizada desde BD
+    await loadGoogleCalendars()
   }
 
   async function loadGoogleCalendars() {
@@ -116,12 +119,14 @@ export default function CalendarioPage() {
 
       const selected: string | null = data.selected || null
       setGoogleSelectedId(selected)
+      setGoogleLastSyncAt(data?.lastSyncAt || null)
 
       const writeable = items.filter((c: any) => c.accessRole === 'owner' || c.accessRole === 'writer')
 
       if (selected) {
-        const sel = items.find((c: any) => c.id === selected)
-        setGoogleSelectedName(sel?.summary || (sel?.primary ? 'Primary' : 'Calendario'))
+        // Si el API devolvió selectedName (desde BD) úsalo; si no, busca en la lista remota
+        const selName = data?.selectedName || items.find((c: any) => c.id === selected)?.summary
+        setGoogleSelectedName(selName || 'Calendario')
         setShowSelectButton(writeable.length > 1)
       } else {
         if (writeable.length === 1) {
@@ -162,6 +167,8 @@ export default function CalendarioPage() {
     finally {
       setSyncing(false)
       const range = currentRange || (() => { const s = new Date(); s.setDate(1); s.setHours(0,0,0,0); const e = new Date(s); e.setMonth(e.getMonth()+2); e.setHours(23,59,59,999); return { start: s, end: e } })()
+      // Actualiza etiqueta de última sincronización
+      await loadGoogleCalendars()
       fetchEvents(range)
     }
   }
@@ -291,6 +298,9 @@ function eventStyleGetter(event?: any) {
               <span className="text-green-700">Conectado</span>
               {googleSelectedName && (
                 <span className="text-gray-700">— Calendario: <span className="font-medium">{googleSelectedName}</span></span>
+              )}
+              {googleLastSyncAt && (
+                <span className="text-gray-500 text-xs">(Última sincronización: {new Date(googleLastSyncAt).toLocaleString()})</span>
               )}
             </>
           ) : (

@@ -24,12 +24,14 @@ export async function GET() {
     }));
 
     const sel = await query(
-      "SELECT provider_calendar_id FROM calendars WHERE user_id=$1 AND provider='google' AND is_primary=TRUE LIMIT 1",
+      "SELECT provider_calendar_id, name, google_last_sync_at FROM calendars WHERE user_id=$1 AND provider='google' AND is_primary=TRUE LIMIT 1",
       [user.id]
     );
     const selected = sel.rowCount ? sel.rows[0].provider_calendar_id : null;
+    const selectedName = sel.rowCount ? sel.rows[0].name : null;
+    const lastSyncAt = sel.rowCount ? sel.rows[0].google_last_sync_at : null;
 
-    return NextResponse.json({ success: true, calendars: items, selected });
+    return NextResponse.json({ success: true, calendars: items, selected, selectedName, lastSyncAt });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Error al listar calendarios' }, { status: 500 });
   }
