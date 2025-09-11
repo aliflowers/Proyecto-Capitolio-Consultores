@@ -55,7 +55,8 @@ export async function withUserRLS<T>(userId: string, fn: (client: DBClient) => P
   try {
     await client.query('BEGIN');
     // Establecer variable de sesión para RLS
-    await client.query("SET LOCAL app.current_user_id = $1", [userId]);
+    // Parámetros no funcionan con SET LOCAL en consultas preparadas; usar set_config
+    await client.query("SELECT set_config('app.current_user_id', $1, true)", [userId]);
     const result = await fn(client);
     await client.query('COMMIT');
     return result;

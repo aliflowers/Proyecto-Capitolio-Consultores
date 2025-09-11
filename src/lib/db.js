@@ -69,7 +69,8 @@ async function withUserRLS(userId, fn) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('SET LOCAL app.current_user_id = $1', [userId]);
+    // Parámetros no son válidos en SET LOCAL; usar set_config(text,bool)
+    await client.query("SELECT set_config('app.current_user_id', $1, true)", [userId]);
     const result = await fn(client);
     await client.query('COMMIT');
     return result;
