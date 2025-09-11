@@ -5,11 +5,17 @@
 /* Estilos suaves para botones en la sección privada */
 @layer base {
   .private-root button {
-    @apply rounded-lg;
+    border-radius: 0.5rem !important; /* 8px */
   }
-  /* Para elementos que actúan como botón con role=button */
   .private-root [role='button'] {
-    @apply rounded-lg;
+    border-radius: 0.5rem !important;
+  }
+  /* Enlaces que se usan como botones */
+  .private-root a.p-2,
+  .private-root a.px-3,
+  .private-root a.px-4,
+  .private-root a.py-2 {
+    border-radius: 0.5rem !important;
   }
 }
 

@@ -5,6 +5,7 @@ import Header from '@/components/private/Header'; // Importar el nuevo header
 import Image from 'next/image'; // Importar el componente Image de Next.js
 import React from 'react'; // Importar React
 import Link from 'next/link'; // Importar el componente Link
+import { FaTachometerAlt, FaFileAlt, FaFolderOpen, FaUsers, FaRobot, FaCalendarAlt, FaShieldAlt } from 'react-icons/fa';
 
 export default async function PrivateLayout({
   children,
@@ -33,17 +34,31 @@ export default async function PrivateLayout({
             />
           </div>
           <nav className="flex flex-col space-y-2">
-            <Link href="/private/" className="text-light hover:bg-blue-900 p-2 rounded-md">Dashboard</Link>
-            <Link href="/private/documentos" className="text-light hover:bg-blue-900 p-2 rounded-md">Documentos</Link>
-            <Link href="/private/expedientes" className="text-light hover:bg-blue-900 p-2 rounded-md">Expedientes</Link>
-            <Link href="/private/clientes" className="text-light hover:bg-blue-900 p-2 rounded-md">Clientes</Link>
-            <Link href="/private/asistente" className="text-light hover:bg-blue-900 p-2 rounded-md">Asistente IA</Link>
-            <Link href="/private/calendario" className="text-light hover:bg-blue-900 p-2 rounded-md">Calendario</Link>
+            <Link href="/private/" className="text-light hover:bg-blue-900 p-2 rounded-md">
+              <span className="inline-flex items-center gap-2"><FaTachometerAlt /> Dashboard</span>
+            </Link>
+            <Link href="/private/documentos" className="text-light hover:bg-blue-900 p-2 rounded-md">
+              <span className="inline-flex items-center gap-2"><FaFileAlt /> Documentos</span>
+            </Link>
+            <Link href="/private/expedientes" className="text-light hover:bg-blue-900 p-2 rounded-md">
+              <span className="inline-flex items-center gap-2"><FaFolderOpen /> Expedientes</span>
+            </Link>
+            <Link href="/private/clientes" className="text-light hover:bg-blue-900 p-2 rounded-md">
+              <span className="inline-flex items-center gap-2"><FaUsers /> Clientes</span>
+            </Link>
+            <Link href="/private/asistente" className="text-light hover:bg-blue-900 p-2 rounded-md">
+              <span className="inline-flex items-center gap-2"><FaRobot /> Asistente IA</span>
+            </Link>
+            <Link href="/private/calendario" className="text-light hover:bg-blue-900 p-2 rounded-md">
+              <span className="inline-flex items-center gap-2"><FaCalendarAlt /> Calendario</span>
+            </Link>
             {/* Solo mostrar administración a super admins */}
             {user.is_super_admin && (
               <div className="mt-4 pt-4 border-t border-blue-800">
                 <span className="text-xs uppercase text-blue-300 font-semibold px-2">Administración</span>
-                <Link href="/private/admin/roles" className="block mt-2 text-light hover:bg-blue-900 p-2 rounded-md whitespace-nowrap">Roles y Permisos</Link>
+                <Link href="/private/admin/roles" className="block mt-2 text-light hover:bg-blue-900 p-2 rounded-md whitespace-nowrap">
+                  <span className="inline-flex items-center gap-2"><FaShieldAlt /> Roles y Permisos</span>
+                </Link>
               </div>
             )}
           </nav>
