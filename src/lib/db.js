@@ -63,11 +63,30 @@ async function testConnection() {
   }
 }
 
+// Ejecuta una función dentro de una transacción configurando
+// SET LOCAL app.current_user_id para habilitar RLS real en la BD.
+async function withUserRLS(userId, fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SET LOCAL app.current_user_id = $1', [userId]);
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   query,
   getClient,
   close,
   pool,
   getCurrentUserId,
-  testConnection
+  testConnection,
+  withUserRLS
 };
