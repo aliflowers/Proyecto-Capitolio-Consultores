@@ -52,6 +52,18 @@ export default function RolesAdminPage() {
     description: '',
     permissions: {} as Record<string, string[]>
   });
+
+  // Clonar rol del sistema a uno nuevo (no sistema)
+  const handleCloneSystemRole = (role: Role) => {
+    const cloneName = `${role.name}_copy`;
+    setNewRole({
+      name: cloneName,
+      display_name: role.display_name ? `Copia de ${role.display_name}` : cloneName,
+      description: role.description || '',
+      permissions: role.permissions || {}
+    });
+    setShowCreateForm(true);
+  };
   const [editingRole, setEditingRole] = useState<Role | null>(null);
 
   const router = useRouter();
@@ -235,7 +247,7 @@ export default function RolesAdminPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre para Mostrar</label>
                 <input
                   type="text"
-                  value={newRole.display_name}
+                  value={newRole.display_name ?? ''}
                   onChange={(e) => setNewRole({...newRole, display_name: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Administrador"
@@ -244,7 +256,7 @@ export default function RolesAdminPage() {
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
                 <textarea
-                  value={newRole.description}
+                  value={newRole.description ?? ''}
                   onChange={(e) => setNewRole({...newRole, description: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Descripción del rol..."
@@ -291,7 +303,7 @@ export default function RolesAdminPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre para Mostrar</label>
                 <input
                   type="text"
-                  value={editingRole.display_name}
+                  value={editingRole.display_name ?? ''}
                   onChange={(e) => setEditingRole({...editingRole, display_name: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Nombre para mostrar"
@@ -300,7 +312,7 @@ export default function RolesAdminPage() {
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
                 <textarea
-                  value={editingRole.description}
+                  value={editingRole.description ?? ''}
                   onChange={(e) => setEditingRole({...editingRole, description: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Descripción del rol..."
@@ -377,6 +389,15 @@ export default function RolesAdminPage() {
                       >
                         Editar
                       </button>
+                      {/* Clonar roles del sistema a uno nuevo editable */}
+                      {role.is_system_role && (
+                        <button
+                          onClick={() => handleCloneSystemRole(role)}
+                          className="text-indigo-600 hover:text-indigo-900"
+                        >
+                          Clonar
+                        </button>
+                      )}
                       {!role.is_system_role && role.can_be_deleted && (
                         <button
                           onClick={() => handleDeleteRole(role.id)}
