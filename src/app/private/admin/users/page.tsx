@@ -55,7 +55,7 @@ export default function UsersAdminPage() {
   });
   const [selectedRoleId, setSelectedRoleId] = useState('');
 
-  // NUEVO: estado para crear usuario y modales/acciones admin
+  // NUEVO: estado para crear/editar usuario y modales/acciones admin
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newUser, setNewUser] = useState({
     full_name: '',
@@ -64,6 +64,8 @@ export default function UsersAdminPage() {
     confirm: '',
     role: 'abogado'
   });
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editUser, setEditUser] = useState<{ id: string; full_name: string; email: string; role: string } | null>(null);
   const [adminActionLoading, setAdminActionLoading] = useState<string | null>(null);
 
   // Cargar usuarios y roles al montar el componente
@@ -290,6 +292,44 @@ export default function UsersAdminPage() {
     } finally { setAdminActionLoading(null); }
   };
 
+  // NUEVO: editar usuario
+  const openEditUser = (user: User) => {
+    setEditUser({ id: user.id, full_name: user.full_name || '', email: user.email, role: user.role || 'abogado' });
+    setShowEditModal(true);
+  };
+
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editUser) return;
+    try {
+      const res = await fetch('/api/crud/usuarios', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editUser.id, email: editUser.email, full_name: editUser.full_name, role: editUser.role })
+      });
+      const data = await res.json().catch(()=>({success:false}));
+      if (!res.ok || !data.success) throw new Error(data?.error || 'No se pudo actualizar el usuario');
+      setShowEditModal(false);
+      setEditUser(null);
+      fetchUsers();
+    } catch (e:any) {
+      setError(e?.message || 'Error al actualizar usuario');
+    }
+  };
+
+  // NUEVO: eliminar usuario
+  const deleteUser = async (user: User) => {
+    if (!confirm(`¿Eliminar al usuario ${user.full_name || user.email}? Esta acción no se puede deshacer.`)) return;
+    try {
+      const res = await fetch(`/api/crud/usuarios?id=${user.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(()=>({success:false}));
+      if (!res.ok || !data.success) throw new Error(data?.error || 'No se pudo eliminar el usuario');
+      fetchUsers();
+    } catch (e:any) {
+      setError(e?.message || 'Error al eliminar usuario');
+    }
+  };
+
   if (loading) {
     return (
       <div className="w-full p-8 text-center">
@@ -367,8 +407,10 @@ export default function UsersAdminPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                     <button onClick={() => handleViewPermissions(user)} className="text-blue-600 hover:text-blue-900">Permisos</button>
+                    <button onClick={() => openEditUser(user)} className="text-indigo-600 hover:text-indigo-900">Editar</button>
+                    <button onClick={() => deleteUser(user)} className="text-red-600 hover:text-red-800">Eliminar</button>
                     <button onClick={() => forceLogout(user.id)} disabled={adminActionLoading===user.id+':logout'} className="text-gray-600 hover:text-gray-900 disabled:opacity-50">Forzar Logout</button>
-                    <button onClick={() => blockAndRevoke(user.id)} disabled={adminActionLoading===user.id+':block'} className="text-red-600 hover:text-red-800 disabled:opacity-50">Bloquear+Revocar</button>
+                    <button onClick={() => blockAndRevoke(user.id)} disabled={adminActionLoading===user.id+':block'} className="text-red-700 hover:text-red-900 disabled:opacity-50">Bloquear+Revocar</button>
                     <button onClick={() => enableUser(user.id)} disabled={adminActionLoading===user.id+':enable'} className="text-green-700 hover:text-green-900 disabled:opacity-50">Habilitar</button>
                   </td>
                 </tr>
@@ -422,6 +464,39 @@ export default function UsersAdminPage() {
               <div className="pt-2 flex justify-end gap-2">
                 <button type="button" onClick={()=> setShowCreateModal(false)} className="px-4 py-2 rounded border">Cancelar</button>
                 <button type="submit" className="px-4 py-2 rounded bg-blue-600 text-white">Crear</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* NUEVO: Modal editar usuario */}
+      {showEditModal && editUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Editar Usuario</h2>
+              <button onClick={()=> setShowEditModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form onSubmit={handleEditUser} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
+                <input value={editUser.full_name} onChange={e=> setEditUser({...editUser, full_name: e.target.value})} className="w-full border rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" value={editUser.email} onChange={e=> setEditUser({...editUser, email: e.target.value})} className="w-full border rounded px-3 py-2" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                <select value={editUser.role} onChange={e=> setEditUser({...editUser, role: e.target.value})} className="w-full border rounded px-3 py-2">
+                  <option value="abogado">Abogado</option>
+                  <option value="asistente">Asistente</option>
+                </select>
+              </div>
+              <div className="pt-2 flex justify-end gap-2">
+                <button type="button" onClick={()=> setShowEditModal(false)} className="px-4 py-2 rounded border">Cancelar</button>
+                <button type="submit" className="px-4 py-2 rounded bg-indigo-600 text-white">Guardar</button>
               </div>
             </form>
           </div>
