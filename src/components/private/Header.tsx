@@ -8,7 +8,7 @@ import LogoutButton from './LogoutButton';
 export default function Header({ user }: { user: User | null }) {
   const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
 
-  const displayName = user?.email || 'Usuario';
+  const displayName = user?.full_name || user?.email || 'Usuario';
   const role = user?.is_super_admin ? 'Super Administrador' : 'Usuario';
 
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -41,6 +41,7 @@ export default function Header({ user }: { user: User | null }) {
     <header className="bg-white shadow-sm p-4 flex justify-between items-center relative">
       <div>
         <h2 className="text-xl font-semibold text-gray-800">Bienvenido de nuevo, {displayName}</h2>
+        {user?.email && <p className="text-sm text-gray-500">{user.email}</p>}
         <p className="text-sm text-gray-500">{role}</p>
       </div>
       <div className="flex items-center space-x-4">

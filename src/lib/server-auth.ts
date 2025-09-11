@@ -9,6 +9,7 @@ export interface User {
   email: string;
   is_super_admin: boolean;
   is_temporary_super_admin: boolean;
+  full_name?: string; // opcional, tomado de profiles
 }
 
 interface Session {
@@ -96,7 +97,7 @@ export async function getCurrentUser(): Promise<User | null> {
     }
     
     const result = await query(
-      'SELECT id, email, is_super_admin, is_temporary_super_admin FROM users WHERE id = $1',
+      'SELECT u.id, u.email, u.is_super_admin, u.is_temporary_super_admin, p.full_name\n       FROM users u\n       LEFT JOIN profiles p ON p.id = u.id\n       WHERE u.id = $1',
       [session.user_id]
     );
     
