@@ -365,7 +365,7 @@ export default function UsersAdminPage() {
     <div className="w-full p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Administración de Usuarios</h1>
-        <button onClick={()=> setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">Crear Usuario</button>
+        <button onClick={()=> setShowCreateModal(true)} className="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-md">Crear Usuario</button>
       </div>
 
       {/* Lista de usuarios */}
