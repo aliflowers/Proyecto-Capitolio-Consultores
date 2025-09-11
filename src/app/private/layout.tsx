@@ -43,7 +43,7 @@ export default async function PrivateLayout({
             {user.is_super_admin && (
               <div className="mt-4 pt-4 border-t border-blue-800">
                 <span className="text-xs uppercase text-blue-300 font-semibold px-2">Administración</span>
-                <Link href="/private/admin/roles" className="text-light hover:bg-blue-900 p-2 rounded-md whitespace-nowrap">Roles y Permisos</Link>
+                <Link href="/private/admin/roles" className="block mt-2 text-light hover:bg-blue-900 p-2 rounded-md whitespace-nowrap">Roles y Permisos</Link>
               </div>
             )}
           </nav>
