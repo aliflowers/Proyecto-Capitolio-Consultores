@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { protectApiRoute } from '@/lib/server-auth';
 import { withSuperAdmin } from '@/lib/auth-middleware';
 import { query } from '@/lib/db';
+import { logAuditEvent } from '@/lib/audit-logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,10 @@ export async function POST(req: NextRequest) {
       await query('UPDATE users SET is_disabled = TRUE, updated_at = NOW() WHERE id = $1', [userId]);
     }
     await query('COMMIT');
+
+    // Auditoría
+    await logAuditEvent((auth as any).user, 'REVOKE_SESSIONS', 'user', userId, { disabled: !!disable });
+
     return NextResponse.json({ success: true, disabled: !!disable });
   } catch (e) {
     await query('ROLLBACK');

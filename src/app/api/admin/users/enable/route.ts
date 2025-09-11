@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { protectApiRoute } from '@/lib/server-auth';
 import { withSuperAdmin } from '@/lib/auth-middleware';
 import { query } from '@/lib/db';
+import { logAuditEvent } from '@/lib/audit-logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,10 @@ export async function POST(req: NextRequest) {
 
   try {
     await query('UPDATE users SET is_disabled = FALSE, updated_at = NOW() WHERE id = $1', [userId]);
+
+    // Auditoría
+    await logAuditEvent((auth as any).user, 'ENABLE_USER', 'user', userId);
+
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ success: false, error: 'Error al habilitar usuario' }, { status: 500 });

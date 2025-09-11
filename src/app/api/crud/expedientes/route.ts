@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withUserRLS } from '@/lib/db';
 import { protectApiRoute } from '@/lib/server-auth';
 
 // GET - Obtener todos los expedientes (protegido y con filtros)
@@ -69,7 +69,9 @@ export async function GET(request: Request) {
 
     queryText += ` ORDER BY e.created_at DESC`;
 
-    const result = await query(queryText, queryParams);
+    const result = await withUserRLS(user.id, async (client) => {
+      return client.query(queryText, queryParams);
+    });
     
     return NextResponse.json({
       success: true,
@@ -186,7 +188,12 @@ export async function PUT(request: Request) {
         status = COALESCE($2, status),
         description = COALESCE($3, description),
         updated_at = NOW()
-      WHERE id = $4 AND user_id = $5
+      WHERE id = $4 AND (
+        user_id = $5 OR EXISTS (
+          SELECT 1 FROM resource_shares s
+          WHERE s.resource_type = 'expediente' AND s.resource_id = $4 AND s.target_user_id = $5 AND s.access = 'write'
+        )
+      )
       RETURNING *
     `, [expediente_name, status, description, id, authResult.user.id]);
     
@@ -229,12 +236,13 @@ export async function DELETE(request: Request) {
     }
     
     await query('BEGIN');
-    // Restringir a dueño del expediente
-    const ownerCheck = await query('SELECT user_id FROM expedientes WHERE id = $1', [id]);
-    if (ownerCheck.rowCount === 0) {
-      return NextResponse.json({ success: false, error: 'Expediente no encontrado' }, { status: 404 });
-    }
-    if (ownerCheck.rows[0].user_id !== (authResult as any).user.id) {
+    // Permitir al dueño o compartido con 'write'
+    const canDelete = await query(`
+      SELECT 1 FROM expedientes e WHERE e.id = $1 AND e.user_id = $2
+      UNION ALL
+      SELECT 1 FROM resource_shares s WHERE s.resource_type = 'expediente' AND s.resource_id = $1 AND s.target_user_id = $2 AND s.access = 'write'
+    `, [id, (authResult as any).user.id]);
+    if (!canDelete.rowCount) {
       return NextResponse.json({ success: false, error: 'No autorizado para eliminar este expediente' }, { status: 403 });
     }
 

@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 
 // Cargar variables de entorno
@@ -45,6 +45,27 @@ export async function close() {
 
 // Exportar el pool para uso directo si es necesario
 export { pool };
+
+export type DBClient = PoolClient;
+
+// Ejecuta una función dentro de una transacción configurando
+// SET LOCAL app.current_user_id para habilitar RLS real en la BD.
+export async function withUserRLS<T>(userId: string, fn: (client: DBClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Establecer variable de sesión para RLS
+    await client.query("SET LOCAL app.current_user_id = $1", [userId]);
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
+    throw err;
+  } finally {
+    client.release();
+  }
+}
 
 // Función para simular auth.uid() de Supabase
 export function getCurrentUserId(): string | null {

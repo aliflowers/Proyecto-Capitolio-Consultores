@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withUserRLS } from '@/lib/db';
 import { protectApiRoute } from '@/lib/server-auth';
 
 // GET - Obtener todos los documentos (protegido y con filtros)
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
 
     queryText += ` GROUP BY d.id, u.email, p.full_name, cs.expediente_name, cl_direct.full_name, cl_indirect.full_name ORDER BY d.created_at DESC`;
 
-    const result = await query(queryText, queryParams);
+    const result = await withUserRLS(user.id, async (client) => client.query(queryText, queryParams));
     
     return NextResponse.json({
       success: true,
@@ -211,7 +211,7 @@ export async function PUT(request: Request) {
       }
     }
     
-    // Actualizar documento
+    // Actualizar documento (owner o compartido con 'write')
     const result = await query(`
       UPDATE documentos 
       SET 
@@ -219,8 +219,15 @@ export async function PUT(request: Request) {
         path = COALESCE($2, path),
         mime_type = COALESCE($3, mime_type),
         document_type = COALESCE($4, document_type),
-        client_id = COALESCE($5, client_id) -- Añadido
-      WHERE id = $6 AND user_id = $7
+        client_id = COALESCE($5, client_id)
+      WHERE id = $6
+        AND (
+          user_id = $7
+          OR EXISTS (
+            SELECT 1 FROM resource_shares s
+            WHERE s.resource_type = 'documento' AND s.resource_id = $6 AND s.target_user_id = $7 AND s.access = 'write'
+          )
+        )
       RETURNING id, user_id, name, path, mime_type, document_type, client_id, created_at
     `, [name, path, mime_type, document_type, client_id, id, (await protectApiRoute() as any).user.id]);
     
@@ -275,6 +282,17 @@ export async function DELETE(request: Request) {
       );
     }
     
+    // Verificar permiso: owner o compartido con 'write'
+    const canDelete = await query(`
+      SELECT 1 FROM documentos d WHERE d.id = $1 AND d.user_id = $2
+      UNION ALL
+      SELECT 1 FROM resource_shares s WHERE s.resource_type = 'documento' AND s.resource_id = $1 AND s.target_user_id = $2 AND s.access = 'write'
+    `, [id, (authResult as any).user.id]);
+
+    if (!canDelete.rowCount) {
+      return NextResponse.json({ success: false, error: 'No autorizado para eliminar este documento' }, { status: 403 });
+    }
+
     // Eliminar relaciones primero (por clave foránea)
     await query('DELETE FROM document_chunks WHERE document_id = $1', [id]);
     await query('DELETE FROM expedientes_documentos WHERE documento_id = $1', [id]);

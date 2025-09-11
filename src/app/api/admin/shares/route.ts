@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { protectApiRoute } from '@/lib/server-auth';
 import { withSuperAdmin } from '@/lib/auth-middleware';
 import { query } from '@/lib/db';
+import { logAuditEvent } from '@/lib/audit-logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,13 @@ export async function POST(req: NextRequest) {
       [resourceType, resourceId, ownerUserId, targetUserId, access]
     );
 
+    // Auditoría
+    await logAuditEvent((auth as any).user, 'SHARE_RESOURCE', 'resource_share', resourceId, {
+      resource_type: resourceType,
+      target_user_id: targetUserId,
+      access
+    });
+
     return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Error al compartir recurso' }, { status: 500 });
@@ -71,6 +79,13 @@ export async function DELETE(req: NextRequest) {
       `DELETE FROM resource_shares WHERE resource_type=$1 AND resource_id=$2 AND target_user_id=$3`,
       [resourceType, resourceId, targetUserId]
     );
+
+    // Auditoría
+    await logAuditEvent((auth as any).user, 'UNSHARE_RESOURCE', 'resource_share', resourceId, {
+      resource_type: resourceType,
+      target_user_id: targetUserId
+    });
+
     return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Error al remover compartición' }, { status: 500 });

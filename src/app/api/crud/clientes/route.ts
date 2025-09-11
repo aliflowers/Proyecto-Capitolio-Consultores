@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withUserRLS } from '@/lib/db';
 import { protectApiRoute } from '@/lib/server-auth';
 
 // GET - Obtener todos los clientes (protegido y con filtros)
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
 
     queryText += ` GROUP BY c.id ORDER BY c.created_at DESC`;
 
-    const result = await query(queryText, queryParams);
+    const result = await withUserRLS(user.id, async (client) => client.query(queryText, queryParams));
     
     return NextResponse.json({
       success: true,
@@ -217,7 +217,12 @@ export async function PUT(request: Request) {
         numero_documento = COALESCE($5, numero_documento),
         nacionalidad = COALESCE($6, nacionalidad),
         direccion = COALESCE($7, direccion)
-      WHERE id = $8 AND user_id = $9
+      WHERE id = $8 AND (
+        user_id = $9 OR EXISTS (
+          SELECT 1 FROM resource_shares s
+          WHERE s.resource_type = 'cliente' AND s.resource_id = $8 AND s.target_user_id = $9 AND s.access = 'write'
+        )
+      )
       RETURNING *
     `, [full_name, email, phone, tipo_documento, numero_documento, nacionalidad, direccion, id, (authResult as any).user.id]);
     
@@ -266,12 +271,13 @@ export async function DELETE(request: Request) {
       );
     }
     
-    // Verificar dueño
-    const own = await query('SELECT user_id FROM clientes WHERE id=$1', [id]);
-    if (own.rowCount === 0) {
-      return NextResponse.json({ success: false, error: 'Cliente no encontrado' }, { status: 404 });
-    }
-    if (own.rows[0].user_id !== (authResult as any).user.id) {
+    // Permitir al dueño o compartido con 'write'
+    const canDelete = await query(`
+      SELECT 1 FROM clientes c WHERE c.id = $1 AND c.user_id = $2
+      UNION ALL
+      SELECT 1 FROM resource_shares s WHERE s.resource_type = 'cliente' AND s.resource_id = $1 AND s.target_user_id = $2 AND s.access = 'write'
+    `, [id, (authResult as any).user.id]);
+    if (!canDelete.rowCount) {
       return NextResponse.json({ success: false, error: 'No autorizado para eliminar este cliente' }, { status: 403 });
     }
 

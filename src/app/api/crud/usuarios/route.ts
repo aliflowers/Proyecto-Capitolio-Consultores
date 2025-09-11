@@ -97,6 +97,32 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Validación de formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Email inválido',
+          message: 'Proporcione un correo válido'
+        },
+        { status: 400 }
+      );
+    }
+
+    // Política de contraseña: 8 a 12 dígitos (solo números)
+    const passwordRegex = /^\d{8,12}$/;
+    if (!passwordRegex.test(password)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Contraseña inválida',
+          message: 'La contraseña debe tener entre 8 y 12 dígitos numéricos'
+        },
+        { status: 400 }
+      );
+    }
     
     // Verificar permisos: solo super administradores pueden crear usuarios
     if (!user.is_super_admin) {

@@ -31,7 +31,7 @@ export async function GET(
     // 3. Verificar permisos en la base de datos
     const dbPath = requestedPath.replace(/\\/g, '/');
     const dbResult = await query(
-      'SELECT user_id FROM documentos WHERE path = $1',
+      'SELECT id, user_id FROM documentos WHERE path = $1',
       [dbPath]
     );
 
@@ -39,10 +39,19 @@ export async function GET(
       return new NextResponse('Archivo no encontrado en la base de datos', { status: 404 });
     }
 
-    const docOwnerId = dbResult.rows[0].user_id;
+    const docId = dbResult.rows[0].id as string;
+    const docOwnerId = dbResult.rows[0].user_id as string;
 
     if (docOwnerId !== user.id) {
-      return new NextResponse('Acceso denegado', { status: 403 });
+      // Permitir si el recurso fue compartido con este usuario (read o write)
+      const shared = await query(
+        `SELECT 1 FROM resource_shares 
+         WHERE resource_type = 'documento' AND resource_id = $1 AND target_user_id = $2 AND access IN ('read','write')`,
+        [docId, user.id]
+      );
+      if (!shared.rowCount) {
+        return new NextResponse('Acceso denegado', { status: 403 });
+      }
     }
 
     // 4. Leer y servir el archivo
