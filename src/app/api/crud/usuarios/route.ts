@@ -181,17 +181,14 @@ export async function POST(request: NextRequest) {
     
     const userId = result.rows[0].id;
     
-    // Crear perfil
+    // Crear/actualizar perfil (el trigger de BD ya crea un perfil básico). Usamos upsert para evitar duplicados.
     await query(`
-      INSERT INTO profiles (
-        id,
-        full_name,
-        role
-      ) VALUES (
-        $1,
-        $2,
-        $3
-      )
+      INSERT INTO profiles (id, full_name, role)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (id) DO UPDATE SET
+        full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
+        role = COALESCE(EXCLUDED.role, profiles.role),
+        updated_at = NOW()
     `, [
       userId,
       full_name || '',
