@@ -650,12 +650,41 @@ export default function UsersAdminPage() {
 function ShareResourceSection({ targetUserId }: { targetUserId: string }) {
   const [resourceType, setResourceType] = useState<'documento'|'expediente'|'cliente'>('documento');
   const [resourceId, setResourceId] = useState('');
+  const [resourceName, setResourceName] = useState('');
   const [access, setAccess] = useState<'read'|'write'>('read');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
+  // Búsqueda por nombre del recurso
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Array<{id:string; name:string}>>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function search(q: string) {
+    if (!q || q.length < 2) { setResults([]); return; }
+    setLoading(true);
+    try {
+      let url = '';
+      if (resourceType === 'documento') url = `/api/search/documents?query=${encodeURIComponent(q)}`;
+      if (resourceType === 'expediente') url = `/api/search/expedientes?query=${encodeURIComponent(q)}`;
+      if (resourceType === 'cliente') url = `/api/search/clients?query=${encodeURIComponent(q)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      setResults(data?.data || []);
+    } catch {
+      setResults([]);
+    } finally { setLoading(false); }
+  }
+
+  function pick(r: {id:string; name:string}) {
+    setResourceId(r.id);
+    setResourceName(r.name);
+    setQuery(r.name);
+    setResults([]);
+  }
+
   const onShare = async () => {
-    if (!resourceId) { setMsg('Especifique el ID del recurso'); return; }
+    if (!resourceId) { setMsg('Seleccione un recurso de la lista'); return; }
     setMsg(null);
     setSaving(true);
     try {
@@ -666,8 +695,10 @@ function ShareResourceSection({ targetUserId }: { targetUserId: string }) {
       });
       const data = await res.json().catch(()=>({success:false}));
       if (!res.ok || !data.success) throw new Error(data?.error || 'No se pudo compartir');
-      setMsg('Recurso compartido correctamente');
+      setMsg(`Compartido: ${resourceName}`);
       setResourceId('');
+      setResourceName('');
+      setQuery('');
     } catch (e:any) {
       setMsg(e?.message || 'Error al compartir');
     } finally { setSaving(false); }
@@ -676,19 +707,26 @@ function ShareResourceSection({ targetUserId }: { targetUserId: string }) {
   return (
     <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
       <h3 className="text-lg font-medium mb-2 text-yellow-900">Compartir recurso con este usuario</h3>
-      <p className="text-sm text-yellow-800 mb-3">Para facilitar, pegue aquí el ID del recurso. Próximamente se puede mejorar con buscadores.</p>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
         <div>
           <label className="block text-sm font-medium mb-1">Tipo</label>
-          <select value={resourceType} onChange={e=> setResourceType(e.target.value as any)} className="w-full border rounded px-3 py-2">
+          <select value={resourceType} onChange={e=> { setResourceType(e.target.value as any); setQuery(''); setResults([]); setResourceId(''); setResourceName(''); }} className="w-full border rounded px-3 py-2">
             <option value="documento">Documento</option>
             <option value="expediente">Expediente</option>
             <option value="cliente">Cliente</option>
           </select>
         </div>
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-1">ID del recurso</label>
-          <input value={resourceId} onChange={e=> setResourceId(e.target.value)} placeholder="UUID" className="w-full border rounded px-3 py-2" />
+        <div className="md:col-span-2 relative">
+          <label className="block text-sm font-medium mb-1">Buscar por nombre</label>
+          <input value={query} onChange={e=> { setQuery(e.target.value); search(e.target.value); }} placeholder={`Escribe para buscar ${resourceType}...`} className="w-full border rounded px-3 py-2" />
+          {loading && <p className="text-xs text-gray-500 mt-1">Buscando...</p>}
+          {results.length>0 && (
+            <ul className="absolute z-10 w-full bg-white border rounded mt-1 max-h-64 overflow-y-auto">
+              {results.map(r => (
+                <li key={r.id} className="px-3 py-2 hover:bg-gray-100 cursor-pointer" onClick={()=> pick(r)}>{r.name}</li>
+              ))}
+            </ul>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Acceso</label>

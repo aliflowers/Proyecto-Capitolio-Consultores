@@ -1,19 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { protectApiRoute } from '@/lib/server-auth';
-import { withSuperAdmin } from '@/lib/auth-middleware';
 import { query } from '@/lib/db';
 import { logAuditEvent } from '@/lib/audit-logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Utilidad: obtener owner y validar permisos (owner o super admin)
+async function getOwnerAndAuthorize(user: any, resourceType: string, resourceId: string) {
+  let ownerQuery = '';
+  if (resourceType === 'documento') ownerQuery = 'SELECT user_id FROM documentos WHERE id = $1';
+  if (resourceType === 'expediente') ownerQuery = 'SELECT user_id FROM expedientes WHERE id = $1';
+  if (resourceType === 'cliente') ownerQuery = 'SELECT user_id FROM clientes WHERE id = $1';
+  if (!ownerQuery) throw new Error('resourceType inválido');
+  const ownRes = await query(ownerQuery, [resourceId]);
+  if (!ownRes.rowCount) throw new Error('Recurso no encontrado');
+  const ownerUserId = ownRes.rows[0].user_id as string;
+  if (!user.is_super_admin && user.id !== ownerUserId) {
+    throw new Error('No autorizado: solo el dueño del recurso o un super admin pueden compartir');
+  }
+  return ownerUserId;
+}
+
 // POST /api/admin/shares { resourceType, resourceId, targetUserId, access }
 export async function POST(req: NextRequest) {
   const auth = await protectApiRoute();
   if (auth instanceof NextResponse) return auth;
-  const superAdmin = await withSuperAdmin();
-  const superCheck = await superAdmin(req as unknown as Request);
-  if (superCheck instanceof NextResponse) return superCheck;
 
   const { resourceType, resourceId, targetUserId, access = 'read' } = await req.json().catch(() => ({}));
   if (!resourceType || !resourceId || !targetUserId) {
@@ -27,16 +39,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Determinar owner_user_id desde cada tabla
-    let ownerQuery = '';
-    if (resourceType === 'documento') ownerQuery = 'SELECT user_id FROM documentos WHERE id = $1';
-    if (resourceType === 'expediente') ownerQuery = 'SELECT user_id FROM expedientes WHERE id = $1';
-    if (resourceType === 'cliente') ownerQuery = 'SELECT user_id FROM clientes WHERE id = $1';
+    const ownerUserId = await getOwnerAndAuthorize((auth as any).user, resourceType, resourceId);
 
-    const ownRes = await query(ownerQuery, [resourceId]);
-    if (!ownRes.rowCount) return NextResponse.json({ success: false, error: 'Recurso no encontrado' }, { status: 404 });
-
-    const ownerUserId = ownRes.rows[0].user_id as string;
     await query(
       `INSERT INTO resource_shares (resource_type, resource_id, owner_user_id, target_user_id, access)
        VALUES ($1,$2,$3,$4,$5)
@@ -45,7 +49,6 @@ export async function POST(req: NextRequest) {
       [resourceType, resourceId, ownerUserId, targetUserId, access]
     );
 
-    // Auditoría
     await logAuditEvent((auth as any).user, 'SHARE_RESOURCE', 'resource_share', resourceId, {
       resource_type: resourceType,
       target_user_id: targetUserId,
@@ -54,7 +57,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    return NextResponse.json({ success: false, error: e?.message || 'Error al compartir recurso' }, { status: 500 });
+    const msg = e?.message || 'Error al compartir recurso';
+    const code = msg.includes('No autorizado') ? 403 : (msg.includes('no encontrado') ? 404 : 500);
+    return NextResponse.json({ success: false, error: msg }, { status: code });
   }
 }
 
@@ -62,9 +67,6 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const auth = await protectApiRoute();
   if (auth instanceof NextResponse) return auth;
-  const superAdmin = await withSuperAdmin();
-  const superCheck = await superAdmin(req as unknown as Request);
-  if (superCheck instanceof NextResponse) return superCheck;
 
   const { searchParams } = new URL(req.url);
   const resourceType = searchParams.get('resourceType');
@@ -75,12 +77,13 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
+    await getOwnerAndAuthorize((auth as any).user, resourceType, resourceId);
+
     await query(
       `DELETE FROM resource_shares WHERE resource_type=$1 AND resource_id=$2 AND target_user_id=$3`,
       [resourceType, resourceId, targetUserId]
     );
 
-    // Auditoría
     await logAuditEvent((auth as any).user, 'UNSHARE_RESOURCE', 'resource_share', resourceId, {
       resource_type: resourceType,
       target_user_id: targetUserId
@@ -88,7 +91,9 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    return NextResponse.json({ success: false, error: e?.message || 'Error al remover compartición' }, { status: 500 });
+    const msg = e?.message || 'Error al remover compartición';
+    const code = msg.includes('No autorizado') ? 403 : (msg.includes('no encontrado') ? 404 : 500);
+    return NextResponse.json({ success: false, error: msg }, { status: code });
   }
 }
 
