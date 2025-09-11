@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Estilos suaves para botones en la sección privada */
+@layer base {
+  .private-root button {
+    @apply rounded-lg;
+  }
+  /* Para elementos que actúan como botón con role=button */
+  .private-root [role='button'] {
+    @apply rounded-lg;
+  }
+}
+
 /* Define color variables */
 :root {
   --color-azul-oscuro: #222052;

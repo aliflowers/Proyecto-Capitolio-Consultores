@@ -18,7 +18,7 @@ export default async function PrivateLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="private-root flex min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
       <aside className="w-64 bg-primary shadow-md flex flex-col sticky top-0 h-screen">
         <div className="p-4">
