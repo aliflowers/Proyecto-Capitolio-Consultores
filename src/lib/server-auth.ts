@@ -66,18 +66,21 @@ export async function createSession(userId: string, userEmail: string): Promise<
 }
 
 // Refrescar (extender) una sesión activa por actividad del usuario
-async function refreshSession(session: Session): Promise<void> {
+// allowCookieSet: cuando true, también actualiza la cookie (solo permitido en Route Handlers/Server Actions)
+async function refreshSession(session: Session, allowCookieSet: boolean): Promise<void> {
   const newExpiresAt = new Date(Date.now() + SESSION_IDLE_TIMEOUT_MS);
   try {
     await query('UPDATE sessions SET expires_at = $2 WHERE id = $1', [session.id, newExpiresAt]);
-    const cookieStore = await cookies();
-    cookieStore.set('auth_session', session.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      expires: newExpiresAt,
-      path: '/',
-    });
+    if (allowCookieSet) {
+      const cookieStore = await cookies();
+      cookieStore.set('auth_session', session.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        expires: newExpiresAt,
+        path: '/',
+      });
+    }
   } catch (error) {
     // No bloquear el flujo por un fallo al refrescar; solo registrar.
     console.error('Error refreshing session expiration:', error);
@@ -85,7 +88,7 @@ async function refreshSession(session: Session): Promise<void> {
 }
 
 // Verificar sesión activa (y extenderla por actividad)
-export async function getSession(): Promise<Session | null> {
+export async function getSession(allowCookieSet: boolean = false): Promise<Session | null> {
   try {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get('auth_session')?.value;
@@ -106,7 +109,7 @@ export async function getSession(): Promise<Session | null> {
     const session: Session = result.rows[0];
 
     // Rolling session: extender vencimiento por actividad
-    await refreshSession(session);
+    await refreshSession(session, allowCookieSet);
 
     return session;
   } catch (error) {
@@ -116,9 +119,9 @@ export async function getSession(): Promise<Session | null> {
 }
 
 // Obtener usuario actual
-export async function getCurrentUser(): Promise<User | null> {
+export async function getCurrentUser(allowCookieSet: boolean = false): Promise<User | null> {
   try {
-    const session = await getSession();
+    const session = await getSession(allowCookieSet);
     if (!session) {
       return null;
     }
@@ -180,7 +183,8 @@ export async function requireAuth(): Promise<User> {
 
 // Proteger rutas de API
 export async function protectApiRoute(): Promise<NextResponse | { user: User }> {
-  const user = await getCurrentUser();
+  // En rutas API sí podemos refrescar y setear cookies
+  const user = await getCurrentUser(true);
   
   if (!user) {
     return NextResponse.json(
