@@ -6,6 +6,7 @@ import Image from 'next/image'; // Importar el componente Image de Next.js
 import React from 'react'; // Importar React
 import Link from 'next/link'; // Importar el componente Link
 import { FaTachometerAlt, FaFileAlt, FaFolderOpen, FaUsers, FaRobot, FaCalendarAlt, FaShieldAlt } from 'react-icons/fa';
+import SessionHeartbeat from '@/components/private/SessionHeartbeat';
 
 export default async function PrivateLayout({
   children,
@@ -71,6 +72,8 @@ export default async function PrivateLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0"> {/* Añadido min-w-0 para prevenir el desbordamiento en flexbox */}
         <Header user={user} />
+        {/* Heartbeat mantiene la sesión activa solo mientras haya pestaña abierta */}
+        <SessionHeartbeat />
         <main className="flex-1 p-8 overflow-y-auto">
           {children}
         </main>

@@ -3,6 +3,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
 
+// Tiempo de inactividad máximo por sesión (rolling session): 5 minutos
+const SESSION_IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
+
 // Tipos para la autenticación
 export interface User {
   id: string;
@@ -25,10 +28,10 @@ function generateSessionToken(): string {
   return require('crypto').randomBytes(32).toString('hex');
 }
 
-// Crear sesión para el usuario
+// Crear sesión para el usuario (expira por inactividad)
 export async function createSession(userId: string, userEmail: string): Promise<string> {
   const token = generateSessionToken();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+  const expiresAt = new Date(Date.now() + SESSION_IDLE_TIMEOUT_MS);
   
   try {
     // Crear sesión en la base de datos
@@ -62,7 +65,26 @@ export async function createSession(userId: string, userEmail: string): Promise<
   }
 }
 
-// Verificar sesión activa
+// Refrescar (extender) una sesión activa por actividad del usuario
+async function refreshSession(session: Session): Promise<void> {
+  const newExpiresAt = new Date(Date.now() + SESSION_IDLE_TIMEOUT_MS);
+  try {
+    await query('UPDATE sessions SET expires_at = $2 WHERE id = $1', [session.id, newExpiresAt]);
+    const cookieStore = await cookies();
+    cookieStore.set('auth_session', session.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      expires: newExpiresAt,
+      path: '/',
+    });
+  } catch (error) {
+    // No bloquear el flujo por un fallo al refrescar; solo registrar.
+    console.error('Error refreshing session expiration:', error);
+  }
+}
+
+// Verificar sesión activa (y extenderla por actividad)
 export async function getSession(): Promise<Session | null> {
   try {
     const cookieStore = await cookies();
@@ -81,7 +103,12 @@ export async function getSession(): Promise<Session | null> {
       return null;
     }
     
-    return result.rows[0];
+    const session: Session = result.rows[0];
+
+    // Rolling session: extender vencimiento por actividad
+    await refreshSession(session);
+
+    return session;
   } catch (error) {
     console.error('Error getting session:', error);
     return null;
