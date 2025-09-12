@@ -68,20 +68,46 @@ export async function findRcUserByEmail(email: string) {
   return data.user; // { _id, username, name, emails, ... }
 }
 
+export async function findRcUserByUsername(username: string) {
+  const data = await rcFetch(`/api/v1/users.info?username=${encodeURIComponent(username)}`, { method: 'GET' }).catch(() => null);
+  if (!data || data.success === false) return null;
+  return data.user;
+}
+
 function toUsernameFromEmail(email: string) {
   return email.split('@')[0].replace(/[^a-zA-Z0-9_\.\-]/g, '').slice(0, 24) || `user${Math.floor(Math.random()*10000)}`;
 }
 
 export async function createRcUserIfNotExists(name: string, email: string) {
-  const existing = await findRcUserByEmail(email);
-  if (existing) return existing;
-  const username = toUsernameFromEmail(email);
+  // 1) buscar por email
+  const byEmail = await findRcUserByEmail(email);
+  if (byEmail) return byEmail;
+
+  // 2) si no existe por email, probar por username derivado
+  let baseUsername = toUsernameFromEmail(email);
+  const byUsername = await findRcUserByUsername(baseUsername);
+  if (byUsername) return byUsername;
+
+  // 3) intentar crear; si el username está tomado, generar variaciones y reintentar
   const password = `Tmp_${Math.random().toString(36).slice(2)}_${Date.now()}`; // temporal
-  const data = await rcFetch('/api/v1/users.create', {
-    method: 'POST',
-    body: JSON.stringify({ name, email, username, password, verified: true }),
-  });
-  return data.user; // {_id, username, ...}
+  let attemptUsername = baseUsername;
+  for (let i = 0; i < 5; i++) {
+    try {
+      const data = await rcFetch('/api/v1/users.create', {
+        method: 'POST',
+        body: JSON.stringify({ name, email, username: attemptUsername, password, verified: true }),
+      });
+      return data.user; // {_id, username, ...}
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      const isTaken = msg.includes('is already in use') || msg.includes('error-field-unavailable');
+      if (!isTaken) throw e;
+      // generar nuevo username con sufijo
+      const suffix = Math.random().toString(36).slice(2, 5);
+      attemptUsername = `${baseUsername}-${suffix}`.slice(0, 24);
+    }
+  }
+  throw new Error('No fue posible crear el usuario en Rocket.Chat después de varios intentos.');
 }
 
 export async function createLoginTokenForUser(rcUserId: string) {
