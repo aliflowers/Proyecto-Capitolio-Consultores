@@ -53,6 +53,9 @@ export default async function PrivateLayout({
             <Link href="/private/calendario" className="text-light hover:bg-blue-900 p-2 rounded-md">
               <span className="inline-flex items-center gap-2"><FaCalendarAlt /> Calendario</span>
             </Link>
+            <Link href="/private/chat" className="text-light hover:bg-blue-900 p-2 rounded-md">
+              <span className="inline-flex items-center gap-2">💬 Chat</span>
+            </Link>
             {/* Solo mostrar administración a super admins */}
             {user.is_super_admin && (
               <div className="mt-4 pt-4 border-t border-blue-800">
