@@ -5,6 +5,7 @@ const RC_ADMIN_ID = process.env.RC_ADMIN_ID || '';
 const RC_ADMIN_TOKEN = process.env.RC_ADMIN_TOKEN || '';
 const RC_ADMIN_USERNAME = process.env.RC_ADMIN_USERNAME || process.env.RC_ADMIN_USER || 'admin';
 const RC_ADMIN_PASSWORD = process.env.RC_ADMIN_PASSWORD || process.env.RC_ADMIN_PASS || '';
+const RC_ADMIN_RESUME = process.env.RC_ADMIN_RESUME || '';
 
 function ensureConfig() {
   if (!RC_URL) {
@@ -22,7 +23,25 @@ async function getAdminAuth() {
     cachedAuth = { userId: RC_ADMIN_ID, authToken: RC_ADMIN_TOKEN };
     return cachedAuth;
   }
-  // 2) Intentar login con usuario/contraseña si están disponibles
+  // 2) Intentar login con token de reanudación (resume), si está disponible
+  if (RC_ADMIN_RESUME) {
+    const url = `${RC_URL.replace(/\/$/, '')}/api/v1/login`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resume: RC_ADMIN_RESUME }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const userId = data?.data?.userId || data?.userId;
+      const authToken = data?.data?.authToken || data?.authToken;
+      if (userId && authToken) {
+        cachedAuth = { userId, authToken };
+        return cachedAuth;
+      }
+    }
+  }
+  // 3) Intentar login con usuario/contraseña si están disponibles
   if (RC_ADMIN_USERNAME && RC_ADMIN_PASSWORD) {
     const url = `${RC_URL.replace(/\/$/, '')}/api/v1/login`;
     const res = await fetch(url, {
@@ -41,7 +60,7 @@ async function getAdminAuth() {
       }
     }
   }
-  throw new Error('No hay credenciales válidas para Rocket.Chat. Configure RC_ADMIN_ID/RC_ADMIN_TOKEN o RC_ADMIN_USERNAME/RC_ADMIN_PASSWORD.');
+  throw new Error('No hay credenciales válidas para Rocket.Chat. Configure RC_ADMIN_ID/RC_ADMIN_TOKEN o RC_ADMIN_RESUME, o RC_ADMIN_USERNAME/RC_ADMIN_PASSWORD.');
 }
 
 async function rcFetch(path: string, options: RequestInit = {}) {
