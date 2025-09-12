@@ -3,9 +3,6 @@ import { query } from '@/lib/db';
 const RC_URL = process.env.RC_URL || process.env.NEXT_PUBLIC_ROCKETCHAT_URL || '';
 const RC_ADMIN_ID = process.env.RC_ADMIN_ID || '';
 const RC_ADMIN_TOKEN = process.env.RC_ADMIN_TOKEN || '';
-const RC_ADMIN_USERNAME = process.env.RC_ADMIN_USERNAME || process.env.RC_ADMIN_USER || 'admin';
-const RC_ADMIN_PASSWORD = process.env.RC_ADMIN_PASSWORD || process.env.RC_ADMIN_PASS || '';
-const RC_ADMIN_RESUME = process.env.RC_ADMIN_RESUME || '';
 
 function ensureConfig() {
   if (!RC_URL) {
@@ -18,49 +15,15 @@ let cachedAuth: { userId: string; authToken: string } | null = null;
 async function getAdminAuth() {
   ensureConfig();
   if (cachedAuth) return cachedAuth;
-  // 1) Si hay token e id en el entorno, usarlos directamente
+  // Uso estrictamente un PAT de administrador (recomendado por la guía)
   if (RC_ADMIN_ID && RC_ADMIN_TOKEN) {
     cachedAuth = { userId: RC_ADMIN_ID, authToken: RC_ADMIN_TOKEN };
     return cachedAuth;
   }
-  // 2) Intentar login con token de reanudación (resume), si está disponible
-  if (RC_ADMIN_RESUME) {
-    const url = `${RC_URL.replace(/\/$/, '')}/api/v1/login`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume: RC_ADMIN_RESUME }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const userId = data?.data?.userId || data?.userId;
-      const authToken = data?.data?.authToken || data?.authToken;
-      if (userId && authToken) {
-        cachedAuth = { userId, authToken };
-        return cachedAuth;
-      }
-    }
-  }
-  // 3) Intentar login con usuario/contraseña si están disponibles
-  if (RC_ADMIN_USERNAME && RC_ADMIN_PASSWORD) {
-    const url = `${RC_URL.replace(/\/$/, '')}/api/v1/login`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: RC_ADMIN_USERNAME, password: RC_ADMIN_PASSWORD }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      // Rocket.Chat devuelve { status, data: { userId, authToken, me } } o { userId, authToken }
-      const userId = data?.data?.userId || data?.userId;
-      const authToken = data?.data?.authToken || data?.authToken;
-      if (userId && authToken) {
-        cachedAuth = { userId, authToken };
-        return cachedAuth;
-      }
-    }
-  }
-  throw new Error('No hay credenciales válidas para Rocket.Chat. Configure RC_ADMIN_ID/RC_ADMIN_TOKEN o RC_ADMIN_RESUME, o RC_ADMIN_USERNAME/RC_ADMIN_PASSWORD.');
+  throw new Error(
+    'Faltan RC_ADMIN_ID y RC_ADMIN_TOKEN. Crea un Personal Access Token (PAT) para el usuario admin en Rocket.Chat ' +
+    'y expórtalo como variables de entorno del backend (server-only).'
+  );
 }
 
 async function rcFetch(path: string, options: RequestInit = {}) {
@@ -132,53 +95,16 @@ export async function createRcUserIfNotExists(name: string, email: string) {
 }
 
 export async function createLoginTokenForUser(rcUserId: string) {
-  // Primer intento con las credenciales actuales (puede ser PAT)
-  try {
-    const data = await rcFetch('/api/v1/users.createToken', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ userId: rcUserId }).toString(),
-    });
-    return data.authToken as string;
-  } catch (e: any) {
-    const msg = String(e?.message || '');
-    const notAuth = msg.includes('error-not-authorized') || msg.includes('401') || msg.includes('403');
-    // Si el token actual no autoriza, forzar login por usuario/contraseña y reintentar
-    if (!notAuth) throw e;
+  // Emitir token usando las credenciales admin (PAT)
+  const data = await rcFetch('/api/v1/users.createToken', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ userId: rcUserId }).toString(),
+  });
+  if (!data?.authToken) {
+    throw new Error('users.createToken no devolvió authToken. Verifique permisos del PAT de admin.');
   }
-
-  // Forzar login por usuario/contraseña si está disponible
-  if (RC_ADMIN_USERNAME && RC_ADMIN_PASSWORD) {
-    // Hacemos login directo y usamos ese token para una sola llamada
-    const url = `${RC_URL.replace(/\/$/, '')}/api/v1/login`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: RC_ADMIN_USERNAME, password: RC_ADMIN_PASSWORD }),
-    });
-    if (res.ok) {
-      const dataLogin = await res.json();
-      const userId = dataLogin?.data?.userId || dataLogin?.userId;
-      const authToken = dataLogin?.data?.authToken || dataLogin?.authToken;
-      if (userId && authToken) {
-        const urlCT = `${RC_URL.replace(/\/$/, '')}/api/v1/users.createToken`;
-        const resCT = await fetch(urlCT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Auth-Token': authToken, 'X-User-Id': userId },
-          body: new URLSearchParams({ userId: rcUserId }).toString(),
-        });
-        if (resCT.ok) {
-          const d = await resCT.json();
-          if (d?.authToken) return d.authToken as string;
-          throw new Error('Respuesta inválida de users.createToken');
-        } else {
-          const t = await resCT.text().catch(() => '');
-          throw new Error(`RC API /api/v1/users.createToken ${resCT.status}: ${t}`);
-        }
-      }
-    }
-  }
-  throw new Error('No autorizado para generar token de login en Rocket.Chat');
+  return data.authToken as string;
 }
 
 export function buildEmbeddedUrl(resumeToken: string) {
