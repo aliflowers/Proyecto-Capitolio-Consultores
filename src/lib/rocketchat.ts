@@ -63,9 +63,11 @@ async function rcFetch(path: string, options: RequestInit = {}) {
 }
 
 export async function findRcUserByEmail(email: string) {
-  const data = await rcFetch(`/api/v1/users.info?email=${encodeURIComponent(email)}`, { method: 'GET' }).catch(() => null);
-  if (!data || data.success === false) return null;
-  return data.user; // { _id, username, name, emails, ... }
+  // v7+: users.info ya no acepta email; usar users.list con query por emails.address
+  const query = encodeURIComponent(JSON.stringify({ 'emails.address': email }));
+  const data = await rcFetch(`/api/v1/users.list?query=${query}`, { method: 'GET' }).catch(() => null);
+  const user = data?.users?.[0] || null;
+  return user; // { _id, username, name, emails, ... }
 }
 
 export async function findRcUserByUsername(username: string) {
@@ -111,12 +113,53 @@ export async function createRcUserIfNotExists(name: string, email: string) {
 }
 
 export async function createLoginTokenForUser(rcUserId: string) {
-  const data = await rcFetch('/api/v1/users.createToken', {
-    method: 'POST',
-    body: JSON.stringify({ userId: rcUserId }),
-  });
-  // data = { success: true, userId, authToken }
-  return data.authToken as string;
+  // Primer intento con las credenciales actuales (puede ser PAT)
+  try {
+    const data = await rcFetch('/api/v1/users.createToken', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ userId: rcUserId }).toString(),
+    });
+    return data.authToken as string;
+  } catch (e: any) {
+    const msg = String(e?.message || '');
+    const notAuth = msg.includes('error-not-authorized') || msg.includes('401') || msg.includes('403');
+    // Si el token actual no autoriza, forzar login por usuario/contraseña y reintentar
+    if (!notAuth) throw e;
+  }
+
+  // Forzar login por usuario/contraseña si está disponible
+  if (RC_ADMIN_USERNAME && RC_ADMIN_PASSWORD) {
+    // Hacemos login directo y usamos ese token para una sola llamada
+    const url = `${RC_URL.replace(/\/$/, '')}/api/v1/login`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: RC_ADMIN_USERNAME, password: RC_ADMIN_PASSWORD }),
+    });
+    if (res.ok) {
+      const dataLogin = await res.json();
+      const userId = dataLogin?.data?.userId || dataLogin?.userId;
+      const authToken = dataLogin?.data?.authToken || dataLogin?.authToken;
+      if (userId && authToken) {
+        const urlCT = `${RC_URL.replace(/\/$/, '')}/api/v1/users.createToken`;
+        const resCT = await fetch(urlCT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Auth-Token': authToken, 'X-User-Id': userId },
+          body: new URLSearchParams({ userId: rcUserId }).toString(),
+        });
+        if (resCT.ok) {
+          const d = await resCT.json();
+          if (d?.authToken) return d.authToken as string;
+          throw new Error('Respuesta inválida de users.createToken');
+        } else {
+          const t = await resCT.text().catch(() => '');
+          throw new Error(`RC API /api/v1/users.createToken ${resCT.status}: ${t}`);
+        }
+      }
+    }
+  }
+  throw new Error('No autorizado para generar token de login en Rocket.Chat');
 }
 
 export function buildEmbeddedUrl(resumeToken: string) {
