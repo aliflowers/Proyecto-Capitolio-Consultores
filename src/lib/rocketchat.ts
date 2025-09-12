@@ -3,20 +3,55 @@ import { query } from '@/lib/db';
 const RC_URL = process.env.RC_URL || process.env.NEXT_PUBLIC_ROCKETCHAT_URL || '';
 const RC_ADMIN_ID = process.env.RC_ADMIN_ID || '';
 const RC_ADMIN_TOKEN = process.env.RC_ADMIN_TOKEN || '';
+const RC_ADMIN_USERNAME = process.env.RC_ADMIN_USERNAME || process.env.RC_ADMIN_USER || 'admin';
+const RC_ADMIN_PASSWORD = process.env.RC_ADMIN_PASSWORD || process.env.RC_ADMIN_PASS || '';
 
 function ensureConfig() {
-  if (!RC_URL || !RC_ADMIN_ID || !RC_ADMIN_TOKEN) {
-    throw new Error('Rocket.Chat no está configurado. Defina RC_URL, RC_ADMIN_ID y RC_ADMIN_TOKEN en el entorno.');
+  if (!RC_URL) {
+    throw new Error('Rocket.Chat no está configurado. Defina RC_URL (o NEXT_PUBLIC_ROCKETCHAT_URL) en el entorno.');
   }
+}
+
+let cachedAuth: { userId: string; authToken: string } | null = null;
+
+async function getAdminAuth() {
+  ensureConfig();
+  if (cachedAuth) return cachedAuth;
+  // 1) Si hay token e id en el entorno, usarlos directamente
+  if (RC_ADMIN_ID && RC_ADMIN_TOKEN) {
+    cachedAuth = { userId: RC_ADMIN_ID, authToken: RC_ADMIN_TOKEN };
+    return cachedAuth;
+  }
+  // 2) Intentar login con usuario/contraseña si están disponibles
+  if (RC_ADMIN_USERNAME && RC_ADMIN_PASSWORD) {
+    const url = `${RC_URL.replace(/\/$/, '')}/api/v1/login`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: RC_ADMIN_USERNAME, password: RC_ADMIN_PASSWORD }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      // Rocket.Chat devuelve { status, data: { userId, authToken, me } } o { userId, authToken }
+      const userId = data?.data?.userId || data?.userId;
+      const authToken = data?.data?.authToken || data?.authToken;
+      if (userId && authToken) {
+        cachedAuth = { userId, authToken };
+        return cachedAuth;
+      }
+    }
+  }
+  throw new Error('No hay credenciales válidas para Rocket.Chat. Configure RC_ADMIN_ID/RC_ADMIN_TOKEN o RC_ADMIN_USERNAME/RC_ADMIN_PASSWORD.');
 }
 
 async function rcFetch(path: string, options: RequestInit = {}) {
   ensureConfig();
+  const { userId, authToken } = await getAdminAuth();
   const url = `${RC_URL.replace(/\/$/, '')}${path}`;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-Auth-Token': RC_ADMIN_TOKEN,
-    'X-User-Id': RC_ADMIN_ID,
+    'X-Auth-Token': authToken,
+    'X-User-Id': userId,
     ...(options.headers as any),
   };
   const res = await fetch(url, { ...options, headers });

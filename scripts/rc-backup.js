@@ -10,20 +10,51 @@ const { query } = require('../src/lib/db');
 const RC_URL = process.env.RC_URL || process.env.NEXT_PUBLIC_ROCKETCHAT_URL || '';
 const RC_ADMIN_ID = process.env.RC_ADMIN_ID || '';
 const RC_ADMIN_TOKEN = process.env.RC_ADMIN_TOKEN || '';
+const RC_ADMIN_USERNAME = process.env.RC_ADMIN_USERNAME || process.env.RC_ADMIN_USER || 'admin';
+const RC_ADMIN_PASSWORD = process.env.RC_ADMIN_PASSWORD || process.env.RC_ADMIN_PASS || '';
 
 function ensureConfig() {
-  if (!RC_URL || !RC_ADMIN_ID || !RC_ADMIN_TOKEN) {
-    throw new Error('Faltan variables RC_URL/RC_ADMIN_ID/RC_ADMIN_TOKEN');
+  if (!RC_URL) {
+    throw new Error('Faltan variables: RC_URL. Además configure RC_ADMIN_ID/RC_ADMIN_TOKEN o RC_ADMIN_USERNAME/RC_ADMIN_PASSWORD');
   }
+}
+
+let cachedAuth = null;
+async function getAdminAuth() {
+  ensureConfig();
+  if (cachedAuth) return cachedAuth;
+  if (RC_ADMIN_ID && RC_ADMIN_TOKEN) {
+    cachedAuth = { userId: RC_ADMIN_ID, authToken: RC_ADMIN_TOKEN };
+    return cachedAuth;
+  }
+  if (RC_ADMIN_USERNAME && RC_ADMIN_PASSWORD) {
+    const url = `${RC_URL.replace(/\/$/, '')}/api/v1/login`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: RC_ADMIN_USERNAME, password: RC_ADMIN_PASSWORD }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const userId = data?.data?.userId || data?.userId;
+      const authToken = data?.data?.authToken || data?.authToken;
+      if (userId && authToken) {
+        cachedAuth = { userId, authToken };
+        return cachedAuth;
+      }
+    }
+  }
+  throw new Error('No fue posible autenticar contra Rocket.Chat');
 }
 
 async function rcFetch(path, options = {}) {
   ensureConfig();
+  const { userId, authToken } = await getAdminAuth();
   const url = `${RC_URL.replace(/\/$/, '')}${path}`;
   const headers = Object.assign({
     'Content-Type': 'application/json',
-    'X-Auth-Token': RC_ADMIN_TOKEN,
-    'X-User-Id': RC_ADMIN_ID,
+    'X-Auth-Token': authToken,
+    'X-User-Id': userId,
   }, options.headers || {});
   const res = await fetch(url, Object.assign({}, options, { headers }));
   if (!res.ok) {

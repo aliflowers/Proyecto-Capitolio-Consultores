@@ -1,0 +1,41 @@
+services:
+  mongo:
+    image: mongo:6
+    container_name: nexus-rc-mongo
+    restart: unless-stopped
+    command: ["mongod", "--oplogSize", "128", "--replSet", "rs0", "--bind_ip", "0.0.0.0"]
+    volumes:
+      - rc-mongo-data:/data/db
+
+  mongo-init-replica:
+    image: mongo:6
+    container_name: nexus-rc-mongo-init
+    depends_on:
+      - mongo
+    restart: "no"
+    entrypoint: ["bash", "-lc", "sleep 5 && mongosh --host mongo --eval 'rs.initiate({_id:\"rs0\",members:[{_id:0,host:\"mongo:27017\"}]});'"]
+
+  rocketchat:
+    image: rocketchat/rocket.chat:latest
+    container_name: nexus-rc
+    depends_on:
+      - mongo
+      - mongo-init-replica
+    environment:
+      - PORT=3000
+      - ROOT_URL=http://localhost:4000
+      - MONGO_URL=mongodb://mongo:27017/rocketchat?replicaSet=rs0
+      - MONGO_OPLOG_URL=mongodb://mongo:27017/local?replicaSet=rs0
+      - OVERWRITE_SETTING_Show_Setup_Wizard=completed
+      - OVERWRITE_SETTING_Accounts_RegistrationForm=Public
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASS=NexusDev123!
+      - ADMIN_EMAIL=admin@example.com
+    ports:
+      - "4000:3000"
+    restart: unless-stopped
+
+volumes:
+  rc-mongo-data:
+    name: rc-mongo-data
+
