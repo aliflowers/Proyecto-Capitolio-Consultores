@@ -94,17 +94,35 @@ export async function createRcUserIfNotExists(name: string, email: string) {
   throw new Error('No fue posible crear el usuario en Rocket.Chat después de varios intentos.');
 }
 
-export async function createLoginTokenForUser(rcUserId: string) {
-  // Emitir token usando las credenciales admin (PAT)
-  const data = await rcFetch('/api/v1/users.createToken', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ userId: rcUserId }).toString(),
-  });
-  if (!data?.authToken) {
-    throw new Error('users.createToken no devolvió authToken. Verifique permisos del PAT de admin.');
+export async function createLoginTokenForUser(rcUserId: string, username?: string) {
+  // Primero intentar con JSON y userId (formato oficial)
+  try {
+    const data = await rcFetch('/api/v1/users.createToken', {
+      method: 'POST',
+      body: JSON.stringify({ userId: rcUserId }),
+    });
+    // API puede responder en dos formatos según versión:
+    // v6: { data: { authToken } }, v7+: { authToken }
+    const token = (data && (data.authToken || data?.data?.authToken)) as string | undefined;
+    if (token) return token;
+    throw new Error('users.createToken respondió sin authToken');
+  } catch (e1: any) {
+    // Algunas versiones aceptan username; usarlo como plan B si lo tenemos
+    if (username) {
+      try {
+        const data2 = await rcFetch('/api/v1/users.createToken', {
+          method: 'POST',
+          body: JSON.stringify({ username }),
+        });
+        const token2 = (data2 && (data2.authToken || data2?.data?.authToken)) as string | undefined;
+        if (token2) return token2;
+        throw new Error('users.createToken respondió sin authToken (username)');
+      } catch (e2: any) {
+        throw new Error(`Falló users.createToken con userId (${e1?.message}). Y también con username (${e2?.message}).`);
+      }
+    }
+    throw e1;
   }
-  return data.authToken as string;
 }
 
 export function buildEmbeddedUrl(resumeToken: string) {

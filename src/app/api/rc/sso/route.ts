@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const rcUser = await createRcUserIfNotExists(user.full_name || user.email, user.email);
-    const token = await createLoginTokenForUser(rcUser._id);
+    const token = await createLoginTokenForUser(rcUser._id, (rcUser as any)?.username);
 
     const res = NextResponse.json({ loginToken: token });
     res.headers.set('Access-Control-Allow-Origin', rcOrigin);
