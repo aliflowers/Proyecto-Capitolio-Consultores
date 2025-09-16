@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 
 function getRcBaseUrl(): string {
   // Solo para construir el src del iframe; debe ser público
@@ -19,14 +19,16 @@ function getRcOrigin(): string {
 export default function RocketChatIframe({ channel = "general" }: { channel?: string }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const authAttemptRef = useRef(0);
+  const lastAuthTimeRef = useRef(0);
   const rcBaseUrl = useMemo(() => getRcBaseUrl().replace(/\/$/, ''), []);
   const rcOrigin = useMemo(() => getRcOrigin(), []);
 
   const iframeSrc = useMemo(() => {
     if (!rcBaseUrl) return '';
-    // --- CORRECCIÓN APLICADA AQUÍ ---
-    // Se eliminó "?layout=embedded" para mostrar la interfaz completa.
-    // Usamos /home para una entrada general a la aplicación.
+    // Usar la página de login/home de Rocket.Chat
     return `${rcBaseUrl}/home`;
   }, [rcBaseUrl]);
 
@@ -36,6 +38,57 @@ export default function RocketChatIframe({ channel = "general" }: { channel?: st
     }
   }, [rcBaseUrl]);
 
+  const handleSSO = useCallback(async () => {
+    // Evitar múltiples llamadas simultáneas
+    if (isAuthenticating || isAuthenticated) {
+      console.log('SSO ya en proceso o completado, ignorando...');
+      return;
+    }
+
+    // Rate limiting: esperar al menos 5 segundos entre intentos
+    const now = Date.now();
+    const timeSinceLastAuth = now - lastAuthTimeRef.current;
+    if (timeSinceLastAuth < 5000) {
+      console.log(`Esperando ${5000 - timeSinceLastAuth}ms antes del próximo intento SSO`);
+      return;
+    }
+
+    // Límite de intentos
+    if (authAttemptRef.current >= 3) {
+      setError('Se excedió el número máximo de intentos de autenticación. Por favor, recarga la página.');
+      return;
+    }
+
+    setIsAuthenticating(true);
+    authAttemptRef.current++;
+    lastAuthTimeRef.current = now;
+
+    try {
+      console.log(`Intento SSO #${authAttemptRef.current}`);
+      const res = await fetch('/api/rc/sso', { method: 'POST' });
+      const json = await res.json().catch(() => ({}));
+      
+      if (!res.ok || !json?.loginToken) {
+        throw new Error(json?.error || 'No se pudo obtener loginToken');
+      }
+      
+      // Enviar el token al iframe
+      console.log('Token SSO obtenido, enviando al iframe...');
+      iframeRef.current?.contentWindow?.postMessage({
+        event: 'login-with-token',
+        loginToken: json.loginToken,
+      }, rcOrigin);
+      
+      setIsAuthenticated(true);
+      setError(null);
+    } catch (e: any) {
+      console.error('Error en SSO:', e);
+      setError(e?.message || 'Fallo el SSO con Rocket.Chat');
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }, [isAuthenticating, isAuthenticated, rcOrigin]);
+
   useEffect(() => {
     function onMessage(event: MessageEvent) {
       if (event.origin !== rcOrigin) return;
@@ -44,30 +97,21 @@ export default function RocketChatIframe({ channel = "general" }: { channel?: st
         const { event: eventName } = (typeof event.data === 'string' ? JSON.parse(event.data) : event.data) || {};
 
         if (eventName === 'login-prompt') {
-          // El iframe nos pide que iniciemos sesión.
-          // Llamamos a nuestro backend para que haga el SSO.
-          fetch('/api/rc/sso', { method: 'POST' })
-            .then(async (res) => {
-              const json = await res.json().catch(() => ({}));
-              if (!res.ok || !json?.loginToken) {
-                throw new Error(json?.error || 'No se pudo obtener loginToken');
-              }
-              // Enviar el token al iframe
-              iframeRef.current?.contentWindow?.postMessage({
-                event: 'login-with-token',
-                loginToken: json.loginToken,
-              }, rcOrigin);
-            })
-            .catch((e) => setError(e?.message || 'Fallo el SSO con Rocket.Chat'));
+          console.log('Recibido login-prompt de Rocket.Chat');
+          handleSSO();
+        } else if (eventName === 'login-success') {
+          console.log('Login exitoso en Rocket.Chat');
+          setIsAuthenticated(true);
+          setError(null);
         }
       } catch (e: any) {
-        setError(e?.message || 'Error de integración con Rocket.Chat');
+        console.error('Error procesando mensaje:', e);
       }
     }
 
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [rcOrigin]);
+  }, [rcOrigin, handleSSO]);
 
   if (error) {
     return (

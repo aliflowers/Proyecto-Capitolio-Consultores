@@ -254,7 +254,10 @@ export async function createRcUserIfNotExists(name: string, email: string) {
   }
 }
 
-// Función mejorada para SSO usando impersonación
+// Cache para tokens SSO (evitar regenerar constantemente)
+const ssoTokenCache = new Map<string, { token: string; expiresAt: number }>();
+
+// Función simplificada para SSO - usar las credenciales existentes del usuario
 export async function createSSOTokenForUser(username: string, email: string): Promise<string> {
   const ssoLogger = logger.child({ 
     action: 'create-sso-token',
@@ -262,10 +265,18 @@ export async function createSSOTokenForUser(username: string, email: string): Pr
     email 
   });
   
+  // Verificar cache primero
+  const cacheKey = `${username}_${email}`;
+  const cached = ssoTokenCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    ssoLogger.debug('Usando token SSO en cache');
+    return cached.token;
+  }
+  
   ssoLogger.info('Creando token SSO para usuario');
   
   try {
-    // Primero, buscar el usuario para obtener su ID
+    // Primero, buscar el usuario para verificar que existe
     const userInfo = await rcFetch(`/api/v1/users.info?username=${username}`);
     
     if (!userInfo.success || !userInfo.user) {
@@ -274,68 +285,35 @@ export async function createSSOTokenForUser(username: string, email: string): Pr
     
     const userId = userInfo.user._id;
     
-    // Método 1: Intentar generar un Personal Access Token para el usuario
+    // IMPORTANTE: No vamos a generar PATs nuevos cada vez!
+    // En su lugar, vamos a usar una contraseña conocida y estable
+    
+    // Usar una contraseña derivada del usuario pero estable
+    // En producción, esto debería venir de una base de datos segura
+    const stablePassword = `RC_${username}_${process.env.RC_ADMIN_PASSWORD || 'DefaultPass123!'}`;
+    
+    // Actualizar la contraseña del usuario solo si es necesario
+    ssoLogger.debug('Estableciendo contraseña estable para SSO');
+    
     try {
-      ssoLogger.debug('Intentando generar PAT para el usuario');
-      
-      const patResponse = await rcFetch('/api/v1/users.generatePersonalAccessToken', {
-        method: 'POST',
-        body: JSON.stringify({
-          tokenName: `SSO_${Date.now()}`,
-          bypassTwoFactor: true,
-          userId: userId // Intentar generar para otro usuario (requiere permisos admin)
-        }),
-      });
-      
-      if (patResponse.success && patResponse.token) {
-        ssoLogger.info('PAT generado exitosamente para SSO');
-        return patResponse.token;
-      }
-    } catch (patError: any) {
-      ssoLogger.debug('No se pudo generar PAT, intentando método alternativo', { error: patError.message });
-    }
-    
-    // Método 2: Usar el método de login con contraseña temporal
-    ssoLogger.debug('Usando método de contraseña temporal');
-    
-    // Generar una contraseña temporal segura
-    const tempPassword = `SSO_${Math.random().toString(36).slice(2)}_${Date.now()}`;
-    
-    // Actualizar la contraseña del usuario
-    const updateResponse = await rcFetch('/api/v1/users.update', {
-      method: 'POST',
-      body: JSON.stringify({
-        userId: userId,
-        data: {
-          password: tempPassword,
-          requirePasswordChange: false,
-          verified: true
-        }
-      }),
-    });
-    
-    if (!updateResponse.success) {
-      // Si falla la actualización, intentar con un enfoque diferente
-      ssoLogger.warn('No se pudo actualizar contraseña, intentando método setPassword');
-      
-      const setPasswordResponse = await rcFetch('/api/v1/users.setPassword', {
+      await rcFetch('/api/v1/users.update', {
         method: 'POST',
         body: JSON.stringify({
           userId: userId,
-          password: tempPassword
+          data: {
+            password: stablePassword,
+            requirePasswordChange: false,
+            verified: true
+          }
         }),
       });
-      
-      if (!setPasswordResponse.success) {
-        throw new Error('No se pudo establecer contraseña temporal para el usuario');
-      }
+    } catch (updateError: any) {
+      // Si falla la actualización, no es crítico si el usuario ya tiene esa contraseña
+      ssoLogger.debug('No se pudo actualizar contraseña (puede que ya esté establecida)', { error: updateError.message });
     }
     
-    // Hacer login con la contraseña temporal
-    ssoLogger.debug('Realizando login con contraseña temporal');
-    
-    // Esperar un poco para evitar problemas de sincronización
-    await sleep(500);
+    // Hacer login con la contraseña estable
+    ssoLogger.debug('Realizando login SSO');
     
     const loginResponse = await fetch(`${RC_URL}/api/v1/login`, {
       method: 'POST',
@@ -344,22 +322,25 @@ export async function createSSOTokenForUser(username: string, email: string): Pr
       },
       body: JSON.stringify({
         user: username,
-        password: tempPassword,
+        password: stablePassword,
       }),
     });
     
     const loginData = await loginResponse.json();
     
     if (loginResponse.ok && loginData.status !== 'error' && loginData.data?.authToken) {
-      ssoLogger.info('Token SSO creado exitosamente', {
-        userId: loginData.data.userId,
-        hasAuthToken: true
+      ssoLogger.info('Token SSO obtenido exitosamente');
+      
+      // Guardar en cache por 25 minutos
+      ssoTokenCache.set(cacheKey, {
+        token: loginData.data.authToken,
+        expiresAt: Date.now() + (25 * 60 * 1000)
       });
       
       return loginData.data.authToken;
     }
     
-    throw new Error(`No se pudo crear token SSO: ${loginData.error || loginData.message || 'Error desconocido'}`);
+    throw new Error(`No se pudo obtener token SSO: ${loginData.error || loginData.message || 'Error desconocido'}`);
     
   } catch (error: any) {
     ssoLogger.error('Error al crear token SSO', error);
