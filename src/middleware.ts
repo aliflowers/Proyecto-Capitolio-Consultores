@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Logger } from '@/lib/logger';
+import { EdgeLogger } from '@/lib/logger-edge';
 
-// Crear logger específico para el middleware
-const logger = new Logger({ module: 'http-middleware' });
+// Crear logger específico para el middleware (compatible con Edge Runtime)
+const logger = new EdgeLogger({ module: 'http-middleware' });
 
 // Función para extraer información relevante de los headers
 function getHeadersInfo(headers: Headers): Record<string, string> {

@@ -1,7 +1,5 @@
 import pino from 'pino';
 import { z } from 'zod';
-import path from 'path';
-import fs from 'fs';
 
 // Esquema de configuración del logger
 const LogLevelSchema = z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']);
@@ -81,26 +79,49 @@ const productionConfig: pino.LoggerOptions = {
   },
 };
 
-// Crear directorio de logs si no existe
-function ensureLogDirectory() {
-  const logsDir = path.join(process.cwd(), 'logs');
-  if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir, { recursive: true });
-    console.log('📁 Directorio de logs creado:', logsDir);
-  }
-  return logsDir;
-}
+// Detectar si estamos en Edge Runtime
+const isEdgeRuntime = typeof globalThis.EdgeRuntime !== 'undefined' || process.env.NEXT_RUNTIME === 'edge';
 
-// Generar nombre de archivo de log con fecha
-function getLogFileName(type: string) {
-  const date = new Date();
-  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  const logsDir = ensureLogDirectory();
-  return path.join(logsDir, `${type}-${dateStr}.log`);
+// Funciones de archivo solo para Node.js runtime
+let ensureLogDirectory: (() => string) | null = null;
+let getLogFileName: ((type: string) => string) | null = null;
+
+if (!isEdgeRuntime) {
+  // Solo importar y usar módulos de Node.js si NO estamos en Edge Runtime
+  const path = require('path');
+  const fs = require('fs');
+  
+  ensureLogDirectory = () => {
+    const logsDir = path.join(process.cwd(), 'logs');
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+      console.log('📁 Directorio de logs creado:', logsDir);
+    }
+    return logsDir;
+  };
+  
+  getLogFileName = (type: string) => {
+    const date = new Date();
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const logsDir = ensureLogDirectory!();
+    return path.join(logsDir, `${type}-${dateStr}.log`);
+  };
 }
 
 // Configuración para escribir logs en archivos (además de consola)
 const createDualLogger = () => {
+  // Si estamos en Edge Runtime, usar solo configuración básica sin archivos
+  if (isEdgeRuntime) {
+    return pino({
+      ...baseConfig,
+      level: logLevel,
+      // Para Edge Runtime, usar formato JSON simple
+      browser: {
+        asObject: true,
+      },
+    });
+  }
+  
   const shouldLogToFile = process.env.LOG_TO_FILE === 'true';
   
   // En desarrollo, siempre usar pretty print en consola
@@ -108,12 +129,12 @@ const createDualLogger = () => {
     return pino(developmentConfig);
   }
   
-  // Si queremos logs en archivos (desarrollo o producción)
-  if (shouldLogToFile) {
+  // Si queremos logs en archivos (desarrollo o producción) - solo en Node.js runtime
+  if (shouldLogToFile && ensureLogDirectory && getLogFileName) {
     ensureLogDirectory();
     
-    // Para el edge runtime y middleware, usar configuración simple
-    if (typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'edge') {
+    // Para browser, usar configuración simple
+    if (typeof window !== 'undefined') {
       return pino(baseConfig);
     }
     
@@ -129,23 +150,25 @@ const createDualLogger = () => {
         });
       }
       
-      // Agregar streams de archivos
-      streams.push(
-        {
-          level: logLevel,
-          stream: pino.destination({
-            dest: getLogFileName('combined'),
-            sync: false,
-          }),
-        },
-        {
-          level: 'error',
-          stream: pino.destination({
-            dest: getLogFileName('error'),
-            sync: false,
-          }),
-        }
-      );
+      // Agregar streams de archivos (solo si las funciones están disponibles)
+      if (getLogFileName) {
+        streams.push(
+          {
+            level: logLevel,
+            stream: pino.destination({
+              dest: getLogFileName('combined'),
+              sync: false,
+            }),
+          },
+          {
+            level: 'error',
+            stream: pino.destination({
+              dest: getLogFileName('error'),
+              sync: false,
+            }),
+          }
+        );
+      }
       
       return pino(
         {
@@ -167,13 +190,13 @@ const createDualLogger = () => {
 // Crear el logger principal con soporte dual
 const logger = createDualLogger();
 
-// Log inicial para confirmar configuración
-if (process.env.LOG_TO_FILE === 'true') {
+// Log inicial para confirmar configuración (solo en Node.js runtime)
+if (!isEdgeRuntime && process.env.LOG_TO_FILE === 'true') {
   logger.info('📦 Sistema de logging iniciado', {
     mode: process.env.NODE_ENV,
     level: logLevel,
     loggingToFile: true,
-    logsDirectory: path.join(process.cwd(), 'logs'),
+    runtime: isEdgeRuntime ? 'edge' : 'nodejs',
   });
 }
 
