@@ -1,5 +1,7 @@
 import pino from 'pino';
 import { z } from 'zod';
+import path from 'path';
+import fs from 'fs';
 
 // Esquema de configuración del logger
 const LogLevelSchema = z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']);
@@ -79,8 +81,101 @@ const productionConfig: pino.LoggerOptions = {
   },
 };
 
-// Crear el logger principal
-const logger = pino(isDevelopment ? developmentConfig : productionConfig);
+// Crear directorio de logs si no existe
+function ensureLogDirectory() {
+  const logsDir = path.join(process.cwd(), 'logs');
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+    console.log('📁 Directorio de logs creado:', logsDir);
+  }
+  return logsDir;
+}
+
+// Generar nombre de archivo de log con fecha
+function getLogFileName(type: string) {
+  const date = new Date();
+  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const logsDir = ensureLogDirectory();
+  return path.join(logsDir, `${type}-${dateStr}.log`);
+}
+
+// Configuración para escribir logs en archivos (además de consola)
+const createDualLogger = () => {
+  const shouldLogToFile = process.env.LOG_TO_FILE === 'true';
+  
+  // En desarrollo, siempre usar pretty print en consola
+  if (isDevelopment && !shouldLogToFile) {
+    return pino(developmentConfig);
+  }
+  
+  // Si queremos logs en archivos (desarrollo o producción)
+  if (shouldLogToFile) {
+    ensureLogDirectory();
+    
+    // Para el edge runtime y middleware, usar configuración simple
+    if (typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'edge') {
+      return pino(baseConfig);
+    }
+    
+    // Para el server runtime, usar streams
+    try {
+      const streams = [];
+      
+      // En desarrollo, agregar stream de consola pretty
+      if (isDevelopment) {
+        streams.push({
+          level: logLevel,
+          stream: process.stdout,
+        });
+      }
+      
+      // Agregar streams de archivos
+      streams.push(
+        {
+          level: logLevel,
+          stream: pino.destination({
+            dest: getLogFileName('combined'),
+            sync: false,
+          }),
+        },
+        {
+          level: 'error',
+          stream: pino.destination({
+            dest: getLogFileName('error'),
+            sync: false,
+          }),
+        }
+      );
+      
+      return pino(
+        {
+          ...baseConfig,
+          level: logLevel,
+        },
+        pino.multistream(streams)
+      );
+    } catch (error) {
+      console.warn('Error creando logger con archivos, usando configuración básica:', error);
+      return pino(isDevelopment ? developmentConfig : productionConfig);
+    }
+  }
+  
+  // Por defecto, usar configuración según el entorno
+  return pino(isProduction ? productionConfig : developmentConfig);
+};
+
+// Crear el logger principal con soporte dual
+const logger = createDualLogger();
+
+// Log inicial para confirmar configuración
+if (process.env.LOG_TO_FILE === 'true') {
+  logger.info('📦 Sistema de logging iniciado', {
+    mode: process.env.NODE_ENV,
+    level: logLevel,
+    loggingToFile: true,
+    logsDirectory: path.join(process.cwd(), 'logs'),
+  });
+}
 
 // Tipos para contexto estructurado
 export interface LogContext {

@@ -49,8 +49,10 @@ export function createFileLogger() {
     },
   ];
 
-  // Solo en producción escribir a archivos
-  if (process.env.NODE_ENV === 'production') {
+  // Escribir a archivos si está en producción O si LOG_TO_FILE está activado
+  const shouldLogToFile = process.env.NODE_ENV === 'production' || process.env.LOG_TO_FILE === 'true';
+  
+  if (shouldLogToFile) {
     return pino({
       level: process.env.LOG_LEVEL || 'info',
       transport: {
@@ -59,7 +61,7 @@ export function createFileLogger() {
     });
   }
 
-  // En desarrollo, usar el logger normal con pretty print
+  // En desarrollo sin LOG_TO_FILE, usar el logger normal con pretty print
   return null;
 }
 
@@ -133,7 +135,8 @@ export function setupAutoRotation() {
     }, msToMidnight);
   };
 
-  if (process.env.NODE_ENV === 'production') {
+  // Activar rotación si estamos en producción o si LOG_TO_FILE está activado
+  if (process.env.NODE_ENV === 'production' || process.env.LOG_TO_FILE === 'true') {
     scheduleRotation();
   }
 }
