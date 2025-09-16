@@ -76,8 +76,18 @@ export async function POST(req: NextRequest) {
       rcUsername: (rcUser as any)?.username 
     });
     
-    requestLogger.debug('Creating login token for RC user');
-    const token = await createLoginTokenForUser(rcUser._id, (rcUser as any)?.username);
+    requestLogger.debug('Creating login token for RC user', {
+      username: (rcUser as any)?.username,
+      rcUserId: rcUser._id
+    });
+    
+    // Pasar siempre el username para usar el método de login directo
+    const username = (rcUser as any)?.username;
+    if (!username) {
+      throw new Error('Username no disponible para el usuario de Rocket.Chat');
+    }
+    
+    const token = await createLoginTokenForUser(rcUser._id, username);
     
     requestLogger.info('SSO login token generated successfully', {
       userId: user.id,
