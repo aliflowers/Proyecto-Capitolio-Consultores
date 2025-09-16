@@ -24,9 +24,11 @@ export default function RocketChatIframe({ channel = "general" }: { channel?: st
 
   const iframeSrc = useMemo(() => {
     if (!rcBaseUrl) return '';
-    // Embebido sin tokens en la URL
-    return `${rcBaseUrl}/channel/${encodeURIComponent(channel)}?layout=embedded`;
-  }, [rcBaseUrl, channel]);
+    // --- CORRECCIÓN APLICADA AQUÍ ---
+    // Se eliminó "?layout=embedded" para mostrar la interfaz completa.
+    // Usamos /home para una entrada general a la aplicación.
+    return `${rcBaseUrl}/home`;
+  }, [rcBaseUrl]);
 
   useEffect(() => {
     if (!rcBaseUrl) {
@@ -35,13 +37,15 @@ export default function RocketChatIframe({ channel = "general" }: { channel?: st
   }, [rcBaseUrl]);
 
   useEffect(() => {
-    function onMessage(ev: MessageEvent) {
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== rcOrigin) return;
+
       try {
-        if (!rcOrigin || ev.origin !== rcOrigin) return; // validar origin exacto
-        const data = ev.data || {};
-        // Rocket.Chat envía un evento de ‘ready’ cuando el iframe está listo
-        if (data.eventName === 'ready' || data.externalCommand === 'ready') {
-          // Solicitar token al backend SSO
+        const { event: eventName } = (typeof event.data === 'string' ? JSON.parse(event.data) : event.data) || {};
+
+        if (eventName === 'login-prompt') {
+          // El iframe nos pide que iniciemos sesión.
+          // Llamamos a nuestro backend para que haga el SSO.
           fetch('/api/rc/sso', { method: 'POST' })
             .then(async (res) => {
               const json = await res.json().catch(() => ({}));
@@ -80,9 +84,12 @@ export default function RocketChatIframe({ channel = "general" }: { channel?: st
       ref={iframeRef}
       src={iframeSrc}
       title="Rocket.Chat"
-      className="w-full h-[calc(100vh-10rem)] border-0"
-      allow="clipboard-read; clipboard-write; microphone; camera;"
+      style={{
+        width: '100%',
+        height: 'calc(100vh - 120px)', // Ajusta la altura según sea necesario
+        border: 'none',
+      }}
+      allow="autoplay; camera; microphone"
     />
   );
 }
-

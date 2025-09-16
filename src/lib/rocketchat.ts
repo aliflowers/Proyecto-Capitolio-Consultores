@@ -1,132 +1,158 @@
-import { query } from '@/lib/db';
+// src/lib/rocketchat.ts
+import { Logger } from './logger';
+
+// Crear logger específico para el módulo Rocket.Chat
+const logger = new Logger({ module: 'rocketchat' });
 
 const RC_URL = process.env.RC_URL || process.env.NEXT_PUBLIC_ROCKETCHAT_URL || '';
 const RC_ADMIN_ID = process.env.RC_ADMIN_ID || '';
 const RC_ADMIN_TOKEN = process.env.RC_ADMIN_TOKEN || '';
 
 function ensureConfig() {
-  if (!RC_URL) {
-    throw new Error('Rocket.Chat no está configurado. Defina RC_URL (o NEXT_PUBLIC_ROCKETCHAT_URL) en el entorno.');
+  if (!RC_URL || !RC_ADMIN_ID || !RC_ADMIN_TOKEN) {
+    logger.fatal('FALTAN VARIABLES DE ENTORNO DE ROCKET.CHAT', undefined, {
+      RC_URL: RC_URL ? 'OK' : 'FALTA',
+      RC_ADMIN_ID: RC_ADMIN_ID ? 'OK' : 'FALTA',
+      RC_ADMIN_TOKEN: RC_ADMIN_TOKEN ? 'OK' : 'FALTA'
+    });
+    throw new Error('Rocket.Chat no está configurado correctamente en el backend. Revisa las variables de entorno.');
   }
-}
-
-let cachedAuth: { userId: string; authToken: string } | null = null;
-
-async function getAdminAuth() {
-  ensureConfig();
-  if (cachedAuth) return cachedAuth;
-  // Uso estrictamente un PAT de administrador (recomendado por la guía)
-  if (RC_ADMIN_ID && RC_ADMIN_TOKEN) {
-    cachedAuth = { userId: RC_ADMIN_ID, authToken: RC_ADMIN_TOKEN };
-    return cachedAuth;
-  }
-  throw new Error(
-    'Faltan RC_ADMIN_ID y RC_ADMIN_TOKEN. Crea un Personal Access Token (PAT) para el usuario admin en Rocket.Chat ' +
-    'y expórtalo como variables de entorno del backend (server-only).'
-  );
 }
 
 async function rcFetch(path: string, options: RequestInit = {}) {
+  const apiLogger = logger.child({ 
+    action: 'api-fetch',
+    method: options.method || 'GET',
+    path 
+  });
+  const timer = apiLogger.startTimer(`RC API: ${options.method || 'GET'} ${path}`);
+  
+  // Asegurarse de que la configuración existe antes de cada llamada
   ensureConfig();
-  const { userId, authToken } = await getAdminAuth();
+  
   const url = `${RC_URL.replace(/\/$/, '')}${path}`;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'X-Auth-Token': authToken,
-    'X-User-Id': userId,
-    ...(options.headers as any),
-  };
-  const res = await fetch(url, { ...options, headers });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`RC API ${path} ${res.status}: ${text}`);
+  
+  const headers = new Headers(options.headers || {});
+  headers.set('X-User-Id', RC_ADMIN_ID);
+  headers.set('X-Auth-Token', RC_ADMIN_TOKEN);
+  if (options.body) {
+    headers.set('Content-Type', 'application/json');
   }
-  return res.json();
-}
 
-export async function findRcUserByEmail(email: string) {
-  // v7+: users.info ya no acepta email; usar users.list con query por emails.address
-  const query = encodeURIComponent(JSON.stringify({ 'emails.address': email }));
-  const data = await rcFetch(`/api/v1/users.list?query=${query}`, { method: 'GET' }).catch(() => null);
-  const user = data?.users?.[0] || null;
-  return user; // { _id, username, name, emails, ... }
-}
+  apiLogger.debug('Making API request', { url, hasBody: !!options.body });
 
-export async function findRcUserByUsername(username: string) {
-  const data = await rcFetch(`/api/v1/users.info?username=${encodeURIComponent(username)}`, { method: 'GET' }).catch(() => null);
-  if (!data || data.success === false) return null;
-  return data.user;
-}
+  const response = await fetch(url, { ...options, headers });
 
-function toUsernameFromEmail(email: string) {
-  return email.split('@')[0].replace(/[^a-zA-Z0-9_\.\-]/g, '').slice(0, 24) || `user${Math.floor(Math.random()*10000)}`;
+  const responseData = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    apiLogger.error(`API Error ${response.status}`, undefined, {
+      status: response.status,
+      url,
+      error: responseData.error,
+      responseData
+    });
+    timer();
+    // Lanzamos un error con un mensaje claro que incluye el tipo de error de RC
+    throw new Error(responseData.error || `Error en API de Rocket.Chat: ${response.statusText}`);
+  }
+
+  apiLogger.info('API request successful', { 
+    status: response.status,
+    success: responseData.success 
+  });
+  timer();
+  return responseData;
 }
 
 export async function createRcUserIfNotExists(name: string, email: string) {
-  // 1) buscar por email
-  const byEmail = await findRcUserByEmail(email);
-  if (byEmail) return byEmail;
+  const username = email.split('@')[0].replace(/[^a-zA-Z0-9._-]/g, '');
+  const userLogger = logger.child({ 
+    action: 'create-user-if-not-exists',
+    email,
+    username 
+  });
+  
+  userLogger.info('Buscando o creando usuario de RC');
 
-  // 2) si no existe por email, probar por username derivado
-  let baseUsername = toUsernameFromEmail(email);
-  const byUsername = await findRcUserByUsername(baseUsername);
-  if (byUsername) return byUsername;
-
-  // 3) intentar crear; si el username está tomado, generar variaciones y reintentar
-  const password = `Tmp_${Math.random().toString(36).slice(2)}_${Date.now()}`; // temporal
-  let attemptUsername = baseUsername;
-  for (let i = 0; i < 5; i++) {
-    try {
-      const data = await rcFetch('/api/v1/users.create', {
-        method: 'POST',
-        body: JSON.stringify({ name, email, username: attemptUsername, password, verified: true }),
+  try {
+    // 1. Intentar encontrar al usuario por su username
+    const result = await rcFetch(`/api/v1/users.info?username=${username}`);
+    if (result.success && result.user) {
+      userLogger.info('Usuario encontrado', {
+        userId: result.user._id,
+        username: result.user.username
       });
-      return data.user; // {_id, username, ...}
-    } catch (e: any) {
-      const msg = String(e?.message || '');
-      const isTaken = msg.includes('is already in use') || msg.includes('error-field-unavailable');
-      if (!isTaken) throw e;
-      // generar nuevo username con sufijo
-      const suffix = Math.random().toString(36).slice(2, 5);
-      attemptUsername = `${baseUsername}-${suffix}`.slice(0, 24);
+      return result.user;
     }
+    // Si success es false pero no lanzó error, es un caso raro
+    throw new Error('La API de RC no encontró al usuario, pero no devolvió un error estándar.');
+
+  } catch (error: any) {
+    // 2. Si el error indica "User not found", procedemos a crearlo
+    if (error.message && error.message.toLowerCase().includes('user not found')) {
+      userLogger.info('Usuario no encontrado. Creando nuevo usuario');
+      const randomPassword = Math.random().toString(36).slice(-12);
+      
+      const creationResult = await rcFetch('/api/v1/users.create', {
+        method: 'POST',
+        body: JSON.stringify({
+          email,
+          name,
+          username,
+          password: randomPassword,
+        }),
+      });
+
+      if (creationResult && creationResult.user) {
+        userLogger.info('Usuario creado exitosamente', {
+          userId: creationResult.user._id,
+          username: creationResult.user.username
+        });
+        return creationResult.user;
+      } else {
+        userLogger.error('ERROR CRÍTICO: La API de RC no devolvió un usuario al crearlo', undefined, {
+          creationResult
+        });
+        throw new Error('La API de RC no devolvió un usuario al crearlo.');
+      }
+    }
+    
+    // 3. Si es cualquier otro tipo de error, es un problema real (ej. credenciales de admin mal configuradas)
+    userLogger.error('Error inesperado durante la búsqueda/creación de usuario', error);
+    throw error;
   }
-  throw new Error('No fue posible crear el usuario en Rocket.Chat después de varios intentos.');
 }
 
-export async function createLoginTokenForUser(rcUserId: string, username?: string) {
-  // Primero intentar con JSON y userId (formato oficial)
+export async function createLoginTokenForUser(rcUserId: string) {
+  const tokenLogger = logger.child({ 
+    action: 'create-login-token',
+    rcUserId 
+  });
+  
+  tokenLogger.info('Creando token de login para RC user');
   try {
     const data = await rcFetch('/api/v1/users.createToken', {
       method: 'POST',
       body: JSON.stringify({ userId: rcUserId }),
     });
-    // API puede responder en dos formatos según versión:
-    // v6: { data: { authToken } }, v7+: { authToken }
-    const token = (data && (data.authToken || data?.data?.authToken)) as string | undefined;
-    if (token) return token;
-    throw new Error('users.createToken respondió sin authToken');
-  } catch (e1: any) {
-    // Algunas versiones aceptan username; usarlo como plan B si lo tenemos
-    if (username) {
-      try {
-        const data2 = await rcFetch('/api/v1/users.createToken', {
-          method: 'POST',
-          body: JSON.stringify({ username }),
-        });
-        const token2 = (data2 && (data2.authToken || data2?.data?.authToken)) as string | undefined;
-        if (token2) return token2;
-        throw new Error('users.createToken respondió sin authToken (username)');
-      } catch (e2: any) {
-        throw new Error(`Falló users.createToken con userId (${e1?.message}). Y también con username (${e2?.message}).`);
-      }
-    }
-    throw e1;
-  }
-}
 
-export function buildEmbeddedUrl(resumeToken: string) {
-  ensureConfig();
-  const base = RC_URL.replace(/\/$/, '');
-  return `${base}/home?layout=embedded&resumeToken=${encodeURIComponent(resumeToken)}`;
+    const token = data?.data?.authToken;
+    if (token) {
+      tokenLogger.info('Token de login creado exitosamente', {
+        hasAuthToken: true,
+        hasUserId: !!data?.data?.userId
+      });
+      return token;
+    }
+    
+    tokenLogger.error('ERROR CRÍTICO: users.createToken respondió sin authToken', undefined, {
+      responseData: data
+    });
+    throw new Error('users.createToken respondió sin authToken');
+
+  } catch (e: any) {
+    tokenLogger.error('Falló la creación del token', e);
+    throw new Error(`Falló users.createToken: ${e.message}`);
+  }
 }
