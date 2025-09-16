@@ -39,7 +39,6 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "docx-preview": "^0.3.6",
-    "dotenv": "^17.2.1",
     "framer-motion": "^12.23.12",
     "googleapis": "^131.0.0",
     "mammoth": "^1.10.0",
@@ -67,8 +66,10 @@
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.2.2",
     "eslint": "^9",
     "eslint-config-next": "15.5.0",
+    "node-fetch": "^2.7.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   }

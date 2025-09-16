@@ -7,16 +7,83 @@ const logger = new Logger({ module: 'rocketchat' });
 const RC_URL = process.env.RC_URL || process.env.NEXT_PUBLIC_ROCKETCHAT_URL || '';
 const RC_ADMIN_ID = process.env.RC_ADMIN_ID || '';
 const RC_ADMIN_TOKEN = process.env.RC_ADMIN_TOKEN || '';
+const RC_ADMIN_USERNAME = process.env.RC_ADMIN_USERNAME || '';
+const RC_ADMIN_PASSWORD = process.env.RC_ADMIN_PASSWORD || '';
+
+// Cache para el token de sesión
+let sessionCache: { userId: string; authToken: string; expiresAt: number } | null = null;
 
 function ensureConfig() {
-  if (!RC_URL || !RC_ADMIN_ID || !RC_ADMIN_TOKEN) {
-    logger.fatal('FALTAN VARIABLES DE ENTORNO DE ROCKET.CHAT', undefined, {
-      RC_URL: RC_URL ? 'OK' : 'FALTA',
-      RC_ADMIN_ID: RC_ADMIN_ID ? 'OK' : 'FALTA',
-      RC_ADMIN_TOKEN: RC_ADMIN_TOKEN ? 'OK' : 'FALTA'
+  if (!RC_URL) {
+    logger.fatal('FALTA RC_URL EN VARIABLES DE ENTORNO', undefined, {
+      RC_URL: RC_URL ? 'OK' : 'FALTA'
     });
-    throw new Error('Rocket.Chat no está configurado correctamente en el backend. Revisa las variables de entorno.');
+    throw new Error('Rocket.Chat URL no está configurada.');
   }
+  
+  // Verificar que tengamos alguna forma de autenticación
+  const hasToken = RC_ADMIN_ID && RC_ADMIN_TOKEN;
+  const hasCredentials = RC_ADMIN_USERNAME && RC_ADMIN_PASSWORD;
+  
+  if (!hasToken && !hasCredentials) {
+    logger.fatal('FALTAN CREDENCIALES DE ROCKET.CHAT', undefined, {
+      hasToken,
+      hasCredentials
+    });
+    throw new Error('Necesitas configurar RC_ADMIN_ID/RC_ADMIN_TOKEN o RC_ADMIN_USERNAME/RC_ADMIN_PASSWORD');
+  }
+}
+
+// Función para obtener token de sesión mediante login
+async function getSessionToken(): Promise<{ userId: string; authToken: string }> {
+  const sessionLogger = logger.child({ action: 'get-session-token' });
+  
+  // Si tenemos un token en cache y no ha expirado, usarlo
+  if (sessionCache && sessionCache.expiresAt > Date.now()) {
+    sessionLogger.debug('Usando token de sesión en cache');
+    return { userId: sessionCache.userId, authToken: sessionCache.authToken };
+  }
+  
+  // Si tenemos PAT configurado, usarlo directamente
+  if (RC_ADMIN_ID && RC_ADMIN_TOKEN) {
+    sessionLogger.debug('Usando Personal Access Token configurado');
+    return { userId: RC_ADMIN_ID, authToken: RC_ADMIN_TOKEN };
+  }
+  
+  // Si no, hacer login con usuario/contraseña
+  sessionLogger.info('Realizando login con usuario/contraseña');
+  
+  const loginResponse = await fetch(`${RC_URL}/api/v1/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      user: RC_ADMIN_USERNAME,
+      password: RC_ADMIN_PASSWORD,
+    }),
+  });
+  
+  const loginData = await loginResponse.json();
+  
+  if (!loginResponse.ok || loginData.status === 'error') {
+    sessionLogger.error('Error al hacer login', undefined, {
+      error: loginData.error,
+      message: loginData.message
+    });
+    throw new Error(`Login fallido: ${loginData.error || loginData.message}`);
+  }
+  
+  // Guardar en cache por 30 minutos
+  sessionCache = {
+    userId: loginData.data.userId,
+    authToken: loginData.data.authToken,
+    expiresAt: Date.now() + (30 * 60 * 1000) // 30 minutos
+  };
+  
+  sessionLogger.info('Login exitoso, token en cache por 30 minutos');
+  
+  return { userId: loginData.data.userId, authToken: loginData.data.authToken };
 }
 
 async function rcFetch(path: string, options: RequestInit = {}) {
@@ -30,11 +97,14 @@ async function rcFetch(path: string, options: RequestInit = {}) {
   // Asegurarse de que la configuración existe antes de cada llamada
   ensureConfig();
   
+  // Obtener token de sesión (usará PAT si está disponible, o hará login)
+  const { userId, authToken } = await getSessionToken();
+  
   const url = `${RC_URL.replace(/\/$/, '')}${path}`;
   
   const headers = new Headers(options.headers || {});
-  headers.set('X-User-Id', RC_ADMIN_ID);
-  headers.set('X-Auth-Token', RC_ADMIN_TOKEN);
+  headers.set('X-User-Id', userId);
+  headers.set('X-Auth-Token', authToken);
   if (options.body) {
     headers.set('Content-Type', 'application/json');
   }
