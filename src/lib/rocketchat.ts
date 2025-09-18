@@ -399,6 +399,28 @@ export async function createLoginTokenForUser(rcUserId: string, username?: strin
   const userInfo = await rcFetch(`/api/v1/users.info?username=${username}`);
   const email = userInfo.user?.emails?.[0]?.address || `${username}@local`;
   
-  // Usar el nuevo método SSO
+  // Usar el nuevo método SSO (legacy): derivar contraseña y loguear
   return createSSOTokenForUser(username, email);
+}
+
+// NUEVO: crear loginToken nativo con users.createToken (recomendado para iframe resumeToken)
+export async function createLoginTokenForUsername(username: string): Promise<string> {
+  const ssoLogger = logger.child({ action: 'create-login-token-native', username });
+  ssoLogger.info('Creando loginToken nativo con users.createToken');
+
+  // Llamada como admin (rcFetch inyecta PAT si está configurado)
+  const result = await rcFetch('/api/v1/users.createToken', {
+    method: 'POST',
+    body: JSON.stringify({ username })
+  });
+
+  // Compatibilidad de formato de respuesta
+  const token = result?.data?.authToken || result?.data?.loginToken || result?.token;
+  if (!token) {
+    ssoLogger.error('La respuesta de users.createToken no contiene token esperado', undefined, { result });
+    throw new Error('No se pudo obtener loginToken de Rocket.Chat');
+  }
+
+  ssoLogger.info('loginToken obtenido exitosamente (no se registra el valor por seguridad)');
+  return token as string;
 }
